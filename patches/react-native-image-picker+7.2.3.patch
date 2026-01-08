@@ -1,0 +1,15 @@
+diff --git a/node_modules/react-native-image-picker/android/build.gradle b/node_modules/react-native-image-picker/android/build.gradle
+index 1234567..abcdefg 100644
+--- a/node_modules/react-native-image-picker/android/build.gradle
++++ b/node_modules/react-native-image-picker/android/build.gradle
+@@ -34,6 +34,10 @@ android {
+             minifyEnabled false
+         }
+     }
++
++    buildFeatures {
++        buildConfig true
++    }
+ 
+     sourceSets {
+         main {
