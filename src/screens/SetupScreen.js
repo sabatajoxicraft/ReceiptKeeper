@@ -8,6 +8,7 @@ import {
   ScrollView,
   Alert,
   ActivityIndicator,
+  Modal,
 } from 'react-native';
 import { getSetting, saveSetting } from '../database/database';
 import { DEFAULT_CARDS, APP_COLORS } from '../config/constants';
@@ -20,6 +21,7 @@ import {
   setOneDriveBasePath,
   getOneDriveBasePath,
 } from '../services/onedriveService';
+import OneDriveFolderBrowser from '../components/OneDriveFolderBrowser';
 
 const SetupScreen = ({ onSetupComplete }) => {
   const [cards, setCards] = useState(DEFAULT_CARDS);
@@ -28,6 +30,7 @@ const SetupScreen = ({ onSetupComplete }) => {
   const [authenticated, setAuthenticated] = useState(false);
   const [userInfo, setUserInfo] = useState(null);
   const [authenticating, setAuthenticating] = useState(false);
+  const [showFolderBrowser, setShowFolderBrowser] = useState(false);
 
   useEffect(() => {
     loadSettings();
@@ -197,13 +200,21 @@ const SetupScreen = ({ onSetupComplete }) => {
       {authenticated && (
         <View style={styles.section}>
           <Text style={styles.sectionTitle}>📁 OneDrive Folder</Text>
-          <TextInput
-            style={styles.input}
-            value={onedriveFolder}
-            onChangeText={setOnedriveFolder}
-            placeholder="/Receipts"
-            placeholderTextColor={APP_COLORS.textSecondary}
-          />
+          <View style={styles.folderInputContainer}>
+            <TextInput
+              style={styles.folderInput}
+              value={onedriveFolder}
+              onChangeText={setOnedriveFolder}
+              placeholder="/Receipts"
+              placeholderTextColor={APP_COLORS.textSecondary}
+            />
+            <TouchableOpacity 
+              style={styles.browseButton} 
+              onPress={() => setShowFolderBrowser(true)}
+            >
+              <Text style={styles.browseButtonText}>Browse</Text>
+            </TouchableOpacity>
+          </View>
           <Text style={styles.hint}>
             Base folder in your OneDrive for receipts (e.g., /Documents/Receipts)
           </Text>
@@ -243,6 +254,21 @@ const SetupScreen = ({ onSetupComplete }) => {
       <TouchableOpacity style={styles.saveButton} onPress={handleSave}>
         <Text style={styles.saveButtonText}>Save & Continue</Text>
       </TouchableOpacity>
+
+      {/* Folder Browser Modal */}
+      <Modal
+        visible={showFolderBrowser}
+        animationType="slide"
+        onRequestClose={() => setShowFolderBrowser(false)}
+      >
+        <OneDriveFolderBrowser
+          onSelectFolder={(path) => {
+            setOnedriveFolder(path);
+            setShowFolderBrowser(false);
+          }}
+          onCancel={() => setShowFolderBrowser(false)}
+        />
+      </Modal>
     </ScrollView>
   );
 };
@@ -296,6 +322,32 @@ const styles = StyleSheet.create({
     padding: 15,
     fontSize: 16,
     color: APP_COLORS.text,
+  },
+  folderInputContainer: {
+    flexDirection: 'row',
+    gap: 10,
+  },
+  folderInput: {
+    flex: 1,
+    backgroundColor: APP_COLORS.surface,
+    borderWidth: 1,
+    borderColor: APP_COLORS.border,
+    borderRadius: 10,
+    padding: 15,
+    fontSize: 16,
+    color: APP_COLORS.text,
+  },
+  browseButton: {
+    backgroundColor: APP_COLORS.secondary,
+    paddingHorizontal: 20,
+    borderRadius: 10,
+    justifyContent: 'center',
+    alignItems: 'center',
+  },
+  browseButtonText: {
+    color: '#FFFFFF',
+    fontSize: 14,
+    fontWeight: '600',
   },
   hint: {
     fontSize: 14,
