@@ -13,3 +13,12 @@ index 1234567..abcdefg 100644
  
      sourceSets {
          main {
+@@ -67,7 +71,7 @@ dependencies {
+     if (isNewArchitectureEnabled() && getReactNativeMinorVersion() < 71) {
+       implementation project(":ReactAndroid")
+     } else {
+-      implementation 'com.facebook.react:react-native:+' // from node_modules
++      compileOnly "com.facebook.react:react-android:0.73.6"
+     }
+ 
+     implementation "androidx.core:core:1.3.1"

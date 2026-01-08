@@ -7,7 +7,7 @@
     "android": "react-native run-android",
     "start": "react-native start",
     "test": "echo \"No tests\" && exit 0",
-    "postinstall": "patch-package"
+    "postinstall": "patch-package && node scripts/fix-deps.js"
   },
   "keywords": [],
   "author": "",
