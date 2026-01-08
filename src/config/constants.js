@@ -4,9 +4,9 @@ export const PAYMENT_METHODS = {
 };
 
 export const DEFAULT_CARDS = [
-  { id: 'card1', name: 'Business Card', color: '#4CAF50' },
-  { id: 'card2', name: 'Personal Card', color: '#2196F3' },
-  { id: 'card3', name: 'Credit Card', color: '#FF9800' },
+  { id: 'card1', name: 'Business Card', color: '#2E7D32' },
+  { id: 'card2', name: 'Personal Card', color: '#1976D2' },
+  { id: 'card3', name: 'Credit Card', color: '#F57C00' },
 ];
 
 export const UPLOAD_STATUS = {
@@ -17,14 +17,15 @@ export const UPLOAD_STATUS = {
 };
 
 export const APP_COLORS = {
-  primary: '#007AFF',
-  secondary: '#5856D6',
-  success: '#34C759',
-  error: '#FF3B30',
-  warning: '#FF9500',
-  background: '#F2F2F7',
-  surface: '#FFFFFF',
-  text: '#000000',
-  textSecondary: '#8E8E93',
-  border: '#C6C6C8',
+  primary: '#2E7D32',      // Green - main brand color
+  secondary: '#4CAF50',    // Light green
+  success: '#43A047',      // Success green
+  error: '#D32F2F',        // Red
+  warning: '#F57C00',      // Orange
+  background: '#F5F5F5',   // Light gray
+  surface: '#FFFFFF',      // White
+  text: '#212121',         // Dark gray
+  textSecondary: '#757575', // Medium gray
+  border: '#E0E0E0',       // Light border
+  accent: '#81C784',       // Accent green
 };
