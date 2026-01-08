@@ -1,4 +1,4 @@
-package com.appcounterapp;
+package com.receiptkeeper;
 
 import android.app.Application;
 import com.facebook.react.PackageList;
