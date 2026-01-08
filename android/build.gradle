@@ -1,7 +1,7 @@
 buildscript {
     ext {
         buildToolsVersion = "34.0.0"
-        minSdkVersion = 23
+        minSdkVersion = 24
         compileSdkVersion = 34
         targetSdkVersion = 34
         ndkVersion = "26.1.10909125"
@@ -21,5 +21,11 @@ buildscript {
 allprojects {
     repositories {
         // Already defined in settings.gradle with dependencyResolutionManagement
+    }
+    configurations.all {
+        resolutionStrategy {
+            force "com.facebook.react:react-android:0.73.6"
+            force "com.facebook.react:hermes-android:0.73.6"
+        }
     }
 }
