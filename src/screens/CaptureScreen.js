@@ -108,8 +108,8 @@ const CaptureScreen = ({ onBack }) => {
     setProcessing(true);
 
     try {
-      // Save image locally
-      const { filePath, filename, year, month } = await saveImageToLocal(
+      // Save image locally (both internal and gallery)
+      const { filePath, filename, year, month, galleryPath } = await saveImageToLocal(
         capturedImage.base64,
         'jpg'
       );
@@ -138,10 +138,14 @@ const CaptureScreen = ({ onBack }) => {
         });
 
       // Show success message
+      const saveLocation = galleryPath 
+        ? '📱 Saved to gallery\n☁️ Synced to OneDrive'
+        : `☁️ ${onedrivePath}`;
+      
       Toast.show({
         type: 'success',
         text1: '✅ Receipt Saved!',
-        text2: `${onedrivePath}`,
+        text2: saveLocation,
         position: 'top',
         visibilityTime: 4000,
       });
