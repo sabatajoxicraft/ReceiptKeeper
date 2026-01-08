@@ -7,14 +7,27 @@ import {
   TextInput,
   ScrollView,
   Alert,
+  ActivityIndicator,
 } from 'react-native';
 import { getSetting, saveSetting } from '../database/database';
 import { DEFAULT_CARDS, APP_COLORS } from '../config/constants';
+import {
+  authenticateOneDrive,
+  isAuthenticated,
+  getOneDriveUserInfo,
+  signOutOneDrive,
+  browseFolders,
+  setOneDriveBasePath,
+  getOneDriveBasePath,
+} from '../services/onedriveService';
 
 const SetupScreen = ({ onSetupComplete }) => {
   const [cards, setCards] = useState(DEFAULT_CARDS);
   const [onedriveFolder, setOnedriveFolder] = useState('/Receipts');
   const [loading, setLoading] = useState(true);
+  const [authenticated, setAuthenticated] = useState(false);
+  const [userInfo, setUserInfo] = useState(null);
+  const [authenticating, setAuthenticating] = useState(false);
 
   useEffect(() => {
     loadSettings();
@@ -23,13 +36,21 @@ const SetupScreen = ({ onSetupComplete }) => {
   const loadSettings = async () => {
     try {
       const savedCards = await getSetting('payment_cards');
-      const savedFolder = await getSetting('onedrive_base_path');
-
+      const savedFolder = await getOneDriveBasePath();
+      const auth = await isAuthenticated();
+      
       if (savedCards) {
         setCards(JSON.parse(savedCards));
       }
       if (savedFolder) {
         setOnedriveFolder(savedFolder);
+      }
+      
+      setAuthenticated(auth);
+      
+      if (auth) {
+        const info = await getOneDriveUserInfo();
+        setUserInfo(info);
       }
     } catch (error) {
       console.error('Error loading settings:', error);
@@ -38,10 +59,69 @@ const SetupScreen = ({ onSetupComplete }) => {
     }
   };
 
+  const handleSignIn = async () => {
+    setAuthenticating(true);
+    try {
+      const result = await authenticateOneDrive();
+      
+      if (result.success) {
+        setAuthenticated(true);
+        setUserInfo({ email: result.email, name: result.name });
+        Alert.alert('Success', `Signed in as ${result.email}`);
+      } else {
+        Alert.alert('Authentication Failed', result.error || 'Please try again');
+      }
+    } catch (error) {
+      Alert.alert('Error', error.message || 'Failed to sign in');
+    } finally {
+      setAuthenticating(false);
+    }
+  };
+
+  const handleSignOut = async () => {
+    Alert.alert(
+      'Sign Out',
+      'Are you sure you want to sign out from OneDrive?',
+      [
+        { text: 'Cancel', style: 'cancel' },
+        {
+          text: 'Sign Out',
+          style: 'destructive',
+          onPress: async () => {
+            await signOutOneDrive();
+            setAuthenticated(false);
+            setUserInfo(null);
+          },
+        },
+      ]
+    );
+  };
+
   const handleSave = async () => {
+    if (!authenticated) {
+      Alert.alert(
+        'OneDrive Not Connected',
+        'Would you like to continue without OneDrive sync? Receipts will only be saved locally.',
+        [
+          { text: 'Cancel', style: 'cancel' },
+          {
+            text: 'Continue',
+            onPress: async () => {
+              await saveSettings();
+            },
+          },
+        ]
+      );
+      return;
+    }
+    
+    await saveSettings();
+  };
+
+  const saveSettings = async () => {
     try {
       await saveSetting('payment_cards', JSON.stringify(cards));
-      await saveSetting('onedrive_base_path', onedriveFolder);
+      await setOneDriveBasePath(onedriveFolder);
       await saveSetting('setup_completed', 'true');
 
       Alert.alert('Success', 'Settings saved successfully!', [
@@ -61,8 +141,9 @@ const SetupScreen = ({ onSetupComplete }) => {
 
   if (loading) {
     return (
-      <View style={styles.container}>
-        <Text>Loading...</Text>
+      <View style={styles.centerContainer}>
+        <ActivityIndicator size="large" color={APP_COLORS.primary} />
+        <Text style={styles.loadingText}>Loading...</Text>
       </View>
     );
   }
@@ -72,20 +153,66 @@ const SetupScreen = ({ onSetupComplete }) => {
       <Text style={styles.title}>📱 Receipt Keeper Setup</Text>
       <Text style={styles.subtitle}>Configure your app for quick receipt capture</Text>
 
+      {/* OneDrive Section */}
       <View style={styles.section}>
-        <Text style={styles.sectionTitle}>OneDrive Folder</Text>
-        <TextInput
-          style={styles.input}
-          value={onedriveFolder}
-          onChangeText={setOnedriveFolder}
-          placeholder="/Receipts"
-          placeholderTextColor={APP_COLORS.textSecondary}
-        />
-        <Text style={styles.hint}>Base folder in your OneDrive for receipts</Text>
+        <Text style={styles.sectionTitle}>☁️ OneDrive Connection</Text>
+        
+        {!authenticated ? (
+          <>
+            <Text style={styles.hint}>
+              Connect your Microsoft account to sync receipts to OneDrive Personal
+            </Text>
+            <TouchableOpacity 
+              style={styles.signInButton} 
+              onPress={handleSignIn}
+              disabled={authenticating}
+            >
+              {authenticating ? (
+                <ActivityIndicator color="#FFFFFF" />
+              ) : (
+                <Text style={styles.signInButtonText}>🔐 Sign in with Microsoft</Text>
+              )}
+            </TouchableOpacity>
+            <Text style={styles.infoText}>
+              Note: Requires Azure AD app registration. See ONEDRIVE_SETUP.md for instructions.
+            </Text>
+          </>
+        ) : (
+          <>
+            <View style={styles.userInfoBox}>
+              <Text style={styles.userInfoLabel}>✅ Connected</Text>
+              <Text style={styles.userInfoEmail}>{userInfo?.email}</Text>
+              {userInfo?.name && (
+                <Text style={styles.userInfoName}>{userInfo.name}</Text>
+              )}
+            </View>
+            <TouchableOpacity style={styles.signOutButton} onPress={handleSignOut}>
+              <Text style={styles.signOutButtonText}>Sign Out</Text>
+            </TouchableOpacity>
+          </>
+        )}
       </View>
 
+      {/* Folder Path Section */}
+      {authenticated && (
+        <View style={styles.section}>
+          <Text style={styles.sectionTitle}>📁 OneDrive Folder</Text>
+          <TextInput
+            style={styles.input}
+            value={onedriveFolder}
+            onChangeText={setOnedriveFolder}
+            placeholder="/Receipts"
+            placeholderTextColor={APP_COLORS.textSecondary}
+          />
+          <Text style={styles.hint}>
+            Base folder in your OneDrive for receipts (e.g., /Documents/Receipts)
+          </Text>
+        </View>
+      )}
+
+      {/* Payment Cards Section */}
       <View style={styles.section}>
-        <Text style={styles.sectionTitle}>Payment Cards</Text>
+        <Text style={styles.sectionTitle}>💳 Payment Cards</Text>
         <Text style={styles.hint}>Customize your card names for quick selection</Text>
         {cards.map((card, index) => (
           <View key={card.id} style={styles.cardInput}>
@@ -101,12 +228,13 @@ const SetupScreen = ({ onSetupComplete }) => {
         ))}
       </View>
 
+      {/* Info Section */}
       <View style={styles.section}>
         <Text style={styles.sectionTitle}>ℹ️ How It Works</Text>
         <Text style={styles.infoText}>
           1. Tap the camera button to capture a receipt{'\n'}
           2. Select payment method (Cash or Card){'\n'}
-          3. Receipt auto-saves to:{'\n'}
+          3. Receipt auto-saves locally and syncs to:{'\n'}
           {'   '}OneDrive/YYYY/MM/DD-HHMMSS.jpg{'\n'}
           4. Get instant success confirmation
         </Text>
@@ -123,6 +251,17 @@ const styles = StyleSheet.create({
   container: {
     flex: 1,
     backgroundColor: APP_COLORS.background,
+  },
+  centerContainer: {
+    flex: 1,
+    justifyContent: 'center',
+    alignItems: 'center',
+    backgroundColor: APP_COLORS.background,
+  },
+  loadingText: {
+    marginTop: 10,
+    fontSize: 16,
+    color: APP_COLORS.textSecondary,
   },
   content: {
     padding: 20,
@@ -162,6 +301,7 @@ const styles = StyleSheet.create({
     fontSize: 14,
     color: APP_COLORS.textSecondary,
     marginTop: 5,
+    marginBottom: 10,
   },
   cardInput: {
     flexDirection: 'row',
@@ -175,12 +315,61 @@ const styles = StyleSheet.create({
     marginRight: 10,
   },
   infoText: {
-    fontSize: 15,
-    lineHeight: 24,
-    color: APP_COLORS.text,
+    fontSize: 14,
+    lineHeight: 22,
+    color: APP_COLORS.textSecondary,
     backgroundColor: APP_COLORS.surface,
-    padding: 15,
+    padding: 12,
+    borderRadius: 8,
+    marginTop: 8,
+  },
+  signInButton: {
+    backgroundColor: '#0078D4', // Microsoft blue
+    padding: 16,
     borderRadius: 10,
+    alignItems: 'center',
+    marginTop: 10,
+  },
+  signInButtonText: {
+    color: '#FFFFFF',
+    fontSize: 16,
+    fontWeight: '600',
+  },
+  userInfoBox: {
+    backgroundColor: APP_COLORS.surface,
+    borderWidth: 2,
+    borderColor: APP_COLORS.success,
+    borderRadius: 10,
+    padding: 15,
+    marginTop: 10,
+  },
+  userInfoLabel: {
+    fontSize: 14,
+    fontWeight: '600',
+    color: APP_COLORS.success,
+    marginBottom: 5,
+  },
+  userInfoEmail: {
+    fontSize: 16,
+    fontWeight: '500',
+    color: APP_COLORS.text,
+  },
+  userInfoName: {
+    fontSize: 14,
+    color: APP_COLORS.textSecondary,
+    marginTop: 3,
+  },
+  signOutButton: {
+    backgroundColor: APP_COLORS.border,
+    padding: 12,
+    borderRadius: 8,
+    alignItems: 'center',
+    marginTop: 10,
+  },
+  signOutButtonText: {
+    color: APP_COLORS.text,
+    fontSize: 14,
+    fontWeight: '500',
   },
   saveButton: {
     backgroundColor: APP_COLORS.primary,

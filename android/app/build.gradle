@@ -19,6 +19,11 @@ android {
         targetSdkVersion rootProject.ext.targetSdkVersion
         versionCode 1
         versionName "1.0"
+        
+        // OAuth redirect for OneDrive
+        manifestPlaceholders = [
+            'appAuthRedirectScheme': 'com.receiptkeeper'
+        ]
     }
     signingConfigs {
         debug {
