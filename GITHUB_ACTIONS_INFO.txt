@@ -1,0 +1,60 @@
+===============================================
+GitHub Actions - APK Build Instructions
+===============================================
+
+✅ Repository Created: https://github.com/sabatajoxicraft/AppCounterApp
+✅ GitHub Action Triggered: Building APK now!
+
+HOW TO GET YOUR APK:
+-----------------------------------------------
+
+1. Check the build status:
+   gh run list --workflow=build-android.yml
+
+2. Wait for build to complete (takes 5-10 minutes)
+
+3. View the run details:
+   gh run view
+
+4. Download the APK artifact:
+   gh run download
+
+   OR visit:
+   https://github.com/sabatajoxicraft/AppCounterApp/actions
+
+5. Install on your phone:
+   - The APK will be in the downloaded folder
+   - Transfer to your phone
+   - Open and install
+
+
+MONITOR BUILD PROGRESS:
+-----------------------------------------------
+Watch the build live:
+gh run watch
+
+Or visit the Actions tab on GitHub:
+https://github.com/sabatajoxicraft/AppCounterApp/actions/runs/20808901946
+
+
+WHAT'S HAPPENING NOW:
+-----------------------------------------------
+GitHub Actions is:
+1. Setting up Ubuntu environment
+2. Installing JDK 17 and Node.js 18
+3. Installing npm dependencies
+4. Building Android APK with Gradle
+5. Uploading APK as artifact
+
+Expected time: 5-10 minutes
+
+
+AFTER BUILD COMPLETES:
+-----------------------------------------------
+Download APK with:
+cd ~/storage/downloads
+gh run download 20808901946
+
+Then install app-debug.apk on your S25 Ultra!
+
+===============================================

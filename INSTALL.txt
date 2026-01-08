@@ -1,0 +1,63 @@
+=======================================================
+APP COUNTER - INSTALLATION STEPS
+=======================================================
+
+OPTION 1: Quick Build & Install (Recommended)
+-------------------------------------------------------
+Metro is already running in your current terminal.
+Open a NEW terminal and run:
+
+cd ~/development/AppCounterApp
+npm run android
+
+
+OPTION 2: Build APK Manually
+-------------------------------------------------------
+In a NEW terminal:
+
+cd ~/development/AppCounterApp/android
+chmod +x gradlew
+./gradlew assembleDebug
+
+
+Then install on your phone:
+
+adb install app/build/outputs/apk/debug/app-debug.apk
+
+
+OPTION 3: Build Release APK
+-------------------------------------------------------
+cd ~/development/AppCounterApp/android
+chmod +x gradlew
+./gradlew assembleRelease
+
+adb install app/build/outputs/apk/release/app-release.apk
+
+
+TROUBLESHOOTING
+-------------------------------------------------------
+If Metro isn't running, start it:
+
+cd ~/development/AppCounterApp
+npm start
+
+
+If you need to restart everything:
+
+cd ~/development/AppCounterApp
+npm start
+# Then in another terminal:
+npm run android
+
+
+To check if your device is connected:
+
+adb devices
+
+
+To copy APK to your phone's Downloads folder:
+
+adb push android/app/build/outputs/apk/debug/app-debug.apk /sdcard/Download/
+
+
+=======================================================

@@ -1,0 +1,39 @@
+# Node modules
+node_modules/
+npm-debug.log*
+yarn-debug.log*
+yarn-error.log*
+
+# Build outputs
+android/app/build/
+android/.gradle/
+android/gradle/
+!android/gradle/wrapper/gradle-wrapper.properties
+!android/gradle/react-native-sqlite-storage.gradle
+android/local.properties
+
+# iOS (not used but standard)
+ios/Pods/
+ios/build/
+
+# Metro
+.metro-health-check*
+
+# Testing
+coverage/
+
+# IDE
+.vscode/
+.idea/
+*.iml
+
+# OS
+.DS_Store
+Thumbs.db
+
+# Misc
+*.log
+*.tgz
+.env
+.env.local
+*.apk

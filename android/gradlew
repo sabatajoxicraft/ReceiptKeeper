@@ -1,0 +1,25 @@
+#!/bin/sh
+##############################################################################
+# Gradle Wrapper Script
+##############################################################################
+
+# Get the directory where this script is located
+SCRIPT_DIR="$( cd "$( dirname "$0" )" && pwd )"
+APP_HOME="$SCRIPT_DIR"
+CLASSPATH=$APP_HOME/gradle/wrapper/gradle-wrapper.jar
+
+# Determine Java command
+if [ -n "$JAVA_HOME" ] ; then
+    JAVACMD=$JAVA_HOME/bin/java
+else
+    JAVACMD=java
+fi
+
+# Download gradle-wrapper.jar if needed
+if [ ! -f "$CLASSPATH" ]; then
+    echo "Downloading gradle-wrapper.jar..."
+    mkdir -p "$APP_HOME/gradle/wrapper"
+    curl -L -o "$CLASSPATH" https://raw.githubusercontent.com/gradle/gradle/master/gradle/wrapper/gradle-wrapper.jar
+fi
+
+exec "$JAVACMD" -classpath "$CLASSPATH" org.gradle.wrapper.GradleWrapperMain "$@"

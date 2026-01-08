@@ -1,0 +1,47 @@
+===============================================
+BUILD APK ON TERMUX - UPDATED COMMANDS
+===============================================
+
+STEP 1: Install Java JDK 21
+-----------------------------------------------
+apt install openjdk-21-jdk
+
+
+STEP 2: Verify Java is installed
+-----------------------------------------------
+java -version
+
+
+STEP 3: Build the APK
+-----------------------------------------------
+cd ~/development/AppCounterApp/android
+./gradlew assembleDebug
+
+
+STEP 4: Copy APK to Downloads
+-----------------------------------------------
+cp ~/development/AppCounterApp/android/app/build/outputs/apk/debug/app-debug.apk ~/storage/downloads/
+
+
+STEP 5: Install the APK
+-----------------------------------------------
+Open your file manager app and navigate to Downloads folder
+Tap on app-debug.apk to install
+
+
+ALTERNATIVE - Install directly from Termux:
+-----------------------------------------------
+termux-open ~/development/AppCounterApp/android/app/build/outputs/apk/debug/app-debug.apk
+
+
+TROUBLESHOOTING:
+-----------------------------------------------
+If build fails with "Gradle daemon disappeared":
+- Close other apps to free memory
+- Try: ./gradlew assembleDebug --no-daemon
+
+If still failing:
+- Try building release: ./gradlew assembleRelease
+- APK will be at: app/build/outputs/apk/release/app-release.apk
+
+===============================================

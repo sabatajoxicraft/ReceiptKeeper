@@ -1,0 +1,56 @@
+===============================================
+BUILD APK ON TERMUX (Android Phone)
+===============================================
+
+STEP 1: Install Java (JDK)
+-----------------------------------------------
+pkg install openjdk-17
+
+
+STEP 2: Build the APK
+-----------------------------------------------
+cd ~/development/AppCounterApp/android
+./gradlew assembleDebug
+
+
+STEP 3: Find your APK
+-----------------------------------------------
+The APK will be at:
+~/development/AppCounterApp/android/app/build/outputs/apk/debug/app-debug.apk
+
+
+STEP 4: Install the APK
+-----------------------------------------------
+Option A - Copy to Downloads folder:
+cp ~/development/AppCounterApp/android/app/build/outputs/apk/debug/app-debug.apk ~/storage/downloads/
+
+Then open your file manager and install from Downloads.
+
+
+Option B - Install directly with Termux:
+termux-open ~/development/AppCounterApp/android/app/build/outputs/apk/debug/app-debug.apk
+
+
+FOR RELEASE APK (optional):
+-----------------------------------------------
+cd ~/development/AppCounterApp/android
+./gradlew assembleRelease
+
+APK location:
+~/development/AppCounterApp/android/app/build/outputs/apk/release/app-release.apk
+
+
+TROUBLESHOOTING:
+-----------------------------------------------
+If build fails, try:
+cd ~/development/AppCounterApp/android
+./gradlew clean
+./gradlew assembleDebug
+
+
+If Java not found after installing:
+pkg install openjdk-17
+hash -r
+java -version
+
+===============================================

@@ -1,0 +1,40 @@
+===============================================
+INSTALL ANDROID SDK IN TERMUX
+===============================================
+
+STEP 1: Install Android SDK packages
+-----------------------------------------------
+pkg install android-tools
+
+
+STEP 2: Set environment variable (add to ~/.bashrc)
+-----------------------------------------------
+echo 'export ANDROID_HOME=$PREFIX/share/android-sdk' >> ~/.bashrc
+echo 'export PATH=$PATH:$ANDROID_HOME/tools:$ANDROID_HOME/platform-tools' >> ~/.bashrc
+source ~/.bashrc
+
+
+STEP 3: Update local.properties
+-----------------------------------------------
+echo "sdk.dir=$PREFIX/share/android-sdk" > ~/development/AppCounterApp/android/local.properties
+
+
+STEP 4: Build the APK
+-----------------------------------------------
+cd ~/development/AppCounterApp/android
+./gradlew assembleDebug --no-daemon --max-workers=1
+
+
+ALTERNATIVE: Build on a PC instead
+===============================================
+Since you have an S25 Ultra, the easiest way might be to:
+
+1. Install Android Studio on a PC/Mac
+2. Copy the project folder to your PC
+3. Open in Android Studio
+4. Click "Build > Build Bundle(s) / APK(s) > Build APK(s)"
+5. Transfer the APK back to your phone
+
+The React Native project is complete and ready to build!
+
+===============================================
