@@ -14,7 +14,7 @@ import RNFS from 'react-native-fs';
 
 // OneDrive Personal OAuth Configuration
 const ONEDRIVE_CONFIG = {
-  clientId: 'YOUR_CLIENT_ID_HERE', // Replace with your Azure AD Client ID
+  clientId: '13f7d33b-7bc3-4e73-8c88-73c35c5f5303',
   redirectUrl: 'com.receiptkeeper://oauth/redirect',
   scopes: ['Files.ReadWrite.All', 'User.Read', 'offline_access'],
   serviceConfiguration: {
