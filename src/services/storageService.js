@@ -31,33 +31,41 @@ export const scanForMissingReceipts = async () => {
     let newReceiptsCount = 0;
 
     // 3. Scan Years
+    console.log(`Scanning base path: ${basePath}`);
     const years = await RNFS.readDir(basePath);
     for (const yearDir of years) {
-      if (yearDir.isDirectory()) {
+      if (yearDir.isDirectory() && /^\d{4}$/.test(yearDir.name)) {
         const year = yearDir.name;
         
         // 4. Scan Months
         const months = await RNFS.readDir(yearDir.path);
         for (const monthDir of months) {
-          if (monthDir.isDirectory()) {
+          if (monthDir.isDirectory() && /^\d{2}$/.test(monthDir.name)) {
             const month = monthDir.name;
             
             // 5. Scan Files
             const files = await RNFS.readDir(monthDir.path);
             for (const file of files) {
-              if (file.isFile() && !knownPaths.has(file.path)) {
+              // Regex for DD-HHMMSS.jpg (or .JPG)
+              // D = digit, H = digit, M = digit, S = digit
+              // Format: 09-220740.jpg
+              const filenameRegex = /^\d{2}-\d{6}\.(jpg|jpeg)$/i;
+              
+              if (file.isFile() && filenameRegex.test(file.name)) {
+                // Check if we already have this EXACT path in DB
+                if (knownPaths.has(file.path)) {
+                  // console.log(`Skipping known file: ${file.name}`);
+                  continue;
+                }
+
                 // Found a missing file!
                 console.log(`Found missing receipt: ${file.path}`);
                 
                 // Add to DB
-                // We default to 'cash' since we don't know payment method
-                // We default to 'pending' upload status
-                // We assume filename format matches our convention, but use file.name regardless
-                
                 await saveReceipt({
                   filename: file.name,
                   filePath: file.path,
-                  onedrivePath: `/${year}/${month}/${file.name}`, // Reconstruct expected remote path
+                  onedrivePath: `/${year}/${month}/${file.name}`,
                   paymentMethod: 'cash', // Default
                   cardName: null,
                   year: year,
@@ -65,6 +73,8 @@ export const scanForMissingReceipts = async () => {
                 });
                 
                 newReceiptsCount++;
+              } else if (file.isFile()) {
+                 console.log(`Skipping invalid format file: ${file.name}`);
               }
             }
           }
