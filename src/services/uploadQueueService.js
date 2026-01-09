@@ -44,6 +44,7 @@ const saveQueue = async (queue) => {
     await AsyncStorage.setItem(QUEUE_KEY, JSON.stringify(queue));
   } catch (error) {
     console.error('Error saving queue:', error);
+    throw error; // Re-throw to let caller know
   }
 };
 
@@ -70,7 +71,8 @@ export const addToQueue = async (localPath, remotePath) => {
     console.log(`Added to upload queue: ${remotePath}`);
     
     // Try to upload immediately if online
-    processQueue();
+    // Don't await this, let it run in background but handle errors
+    processQueue().catch(err => console.error('Background upload failed:', err));
     
     return item.id;
   } catch (error) {
@@ -217,7 +219,7 @@ const processQueueItem = async (item) => {
       // Schedule retry with exponential backoff
       const delay = RETRY_DELAYS[newRetryCount - 1] || 60000;
       setTimeout(() => {
-        processQueue();
+        processQueue().catch(err => console.error('Retry upload failed:', err));
       }, delay);
     }
     

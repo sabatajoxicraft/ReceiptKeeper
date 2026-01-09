@@ -249,8 +249,16 @@ export const uploadToOneDrive = async (localFilePath, remotePath) => {
     const accessToken = await getAccessToken();
     
     // Get base path from settings
-    const basePath = await getOneDriveBasePath();
-    const fullPath = `${basePath}${remotePath}`;
+    let basePath = await getOneDriveBasePath();
+    // Remove trailing slash if present
+    if (basePath.endsWith('/')) {
+      basePath = basePath.slice(0, -1);
+    }
+    
+    // Ensure remotePath starts with /
+    const cleanRemotePath = remotePath.startsWith('/') ? remotePath : `/${remotePath}`;
+    
+    const fullPath = `${basePath}${cleanRemotePath}`;
     
     console.log(`Uploading to OneDrive: ${fullPath}`);
     console.log(`Local file: ${localFilePath}`);
