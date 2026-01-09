@@ -110,6 +110,7 @@ const SyncStatusBar = () => {
   // Sync features disabled temporarily as per user request
   return null;
   /*
+  // Always show the sync button
   return (
     <>
       <View style={styles.container}>
@@ -207,3 +208,4 @@ const styles = StyleSheet.create({
 });
 
 export default SyncStatusBar;
+*/
