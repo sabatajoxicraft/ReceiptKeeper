@@ -40,11 +40,24 @@ const SyncStatusBar = () => {
       const receipts = await getReceipts(1000); // Get up to 1000 receipts
       console.log('Found', receipts.length, 'receipts in database');
       
+      if (receipts.length === 0) {
+        Alert.alert('No Receipts', 'No receipts found to sync. Capture some receipts first!');
+        return;
+      }
+      
       // Step 2: Add each to queue
       let queued = 0;
       for (const receipt of receipts) {
-        await addToQueue(receipt.filePath, receipt.onedrivePath);
-        queued++;
+        // Database columns use snake_case: file_path, onedrive_path
+        const localPath = receipt.file_path;
+        const remotePath = receipt.onedrive_path;
+        
+        if (localPath && remotePath) {
+          await addToQueue(localPath, remotePath);
+          queued++;
+        } else {
+          console.warn('Skipping receipt with missing paths:', receipt);
+        }
       }
       console.log('Added', queued, 'receipts to upload queue');
       
