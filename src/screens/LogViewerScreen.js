@@ -22,12 +22,14 @@ const LogViewerScreen = ({ onBack }) => {
   const loadLogs = async () => {
     setLoading(true);
     try {
+      console.log('Loading logs...');
       const content = await getLog();
+      console.log('Logs loaded, length:', content?.length || 0);
       setLogs(content || 'No logs available');
     } catch (error) {
-      console.error('Error loading logs:', error);
-      Alert.alert('Error', 'Failed to load logs: ' + error.message);
-      setLogs('Error loading logs: ' + error.message);
+      console.error('❌ Error loading logs:', error);
+      const errorMsg = error?.message || String(error) || 'Unknown error';
+      setLogs(`Error loading logs:\n${errorMsg}\n\nTry restarting the app.`);
     } finally {
       setLoading(false);
     }
@@ -43,9 +45,14 @@ const LogViewerScreen = ({ onBack }) => {
           text: 'Clear',
           style: 'destructive',
           onPress: async () => {
-            await clearLog();
-            setLogs('');
-            Alert.alert('Success', 'Logs cleared');
+            try {
+              await clearLog();
+              setLogs('Logs cleared successfully');
+              Alert.alert('Success', 'Logs cleared');
+            } catch (error) {
+              console.error('Error clearing logs:', error);
+              Alert.alert('Error', 'Failed to clear logs: ' + (error?.message || 'Unknown error'));
+            }
           },
         },
       ]

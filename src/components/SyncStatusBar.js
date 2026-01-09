@@ -42,6 +42,7 @@ const SyncStatusBar = () => {
       
       if (receipts.length === 0) {
         Alert.alert('No Receipts', 'No receipts found to sync. Capture some receipts first!');
+        setSyncing(false);
         return;
       }
       
@@ -61,6 +62,12 @@ const SyncStatusBar = () => {
       }
       console.log('Added', queued, 'receipts to upload queue');
       
+      if (queued === 0) {
+        Alert.alert('Nothing to Sync', 'No valid receipts to upload.');
+        setSyncing(false);
+        return;
+      }
+      
       // Step 3: Process the queue
       console.log('Processing upload queue...');
       const result = await processQueue();
@@ -76,7 +83,7 @@ const SyncStatusBar = () => {
       console.log('=== MANUAL SYNC COMPLETE ===');
     } catch (error) {
       console.error('❌ Sync error:', error);
-      Alert.alert('Sync Error', error.message);
+      Alert.alert('Sync Error', error.message || 'Failed to sync receipts');
     } finally {
       setSyncing(false);
     }
