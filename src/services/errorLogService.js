@@ -106,8 +106,16 @@ export const exportLog = async () => {
   try {
     const content = await getLogContents();
     const timestamp = new Date().toISOString().replace(/[:.]/g, '-');
-    const exportPath = `${RNFS.PicturesDirectoryPath || '/storage/emulated/0/Pictures'}/ReceiptKeeper/error_log_${timestamp}.txt`;
+    const picturesPath = RNFS.PicturesDirectoryPath || '/storage/emulated/0/Pictures';
+    const receiptKeeperPath = `${picturesPath}/ReceiptKeeper`;
     
+    // Ensure directory exists
+    const dirExists = await RNFS.exists(receiptKeeperPath);
+    if (!dirExists) {
+      await RNFS.mkdir(receiptKeeperPath);
+    }
+    
+    const exportPath = `${receiptKeeperPath}/error_log_${timestamp}.txt`;
     await RNFS.writeFile(exportPath, content, 'utf8');
     
     console.log(`Log exported to: ${exportPath}`);

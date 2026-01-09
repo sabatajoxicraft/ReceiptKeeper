@@ -11,6 +11,7 @@
 import { authorize } from 'react-native-app-auth';
 import { getSetting, saveSetting } from '../database/database';
 import RNFS from 'react-native-fs';
+import RNFetchBlob from 'rn-fetch-blob';
 
 // OneDrive Personal OAuth Configuration
 const ONEDRIVE_CONFIG = {
@@ -251,47 +252,42 @@ export const uploadToOneDrive = async (localFilePath, remotePath) => {
     const fullPath = `${basePath}${remotePath}`;
     
     console.log(`Uploading to OneDrive: ${fullPath}`);
+    console.log(`Local file: ${localFilePath}`);
     
-    // Read file as base64
-    const fileData = await RNFS.readFile(localFilePath, 'base64');
-    
-    // For React Native, we need to convert base64 to blob/array buffer
-    // Using fetch with base64 data URL
-    const base64Response = await fetch(`data:image/jpeg;base64,${fileData}`);
-    const blob = await base64Response.blob();
-    
-    // Upload using simple upload (< 4MB)
-    const response = await fetch(
+    // Use RNFetchBlob for proper binary upload
+    const response = await RNFetchBlob.fetch(
+      'PUT',
       `https://graph.microsoft.com/v1.0/me/drive/root:${fullPath}:/content`,
       {
-        method: 'PUT',
-        headers: {
-          Authorization: `Bearer ${accessToken}`,
-          'Content-Type': 'image/jpeg',
-        },
-        body: blob,
-      }
+        Authorization: `Bearer ${accessToken}`,
+        'Content-Type': 'image/jpeg',
+      },
+      RNFetchBlob.wrap(localFilePath)
     );
     
-    console.log(`Upload response status: ${response.status}`);
+    const status = response.info().status;
+    console.log(`Upload response status: ${status}`);
     
-    if (!response.ok) {
-      const errorText = await response.text();
+    if (status >= 200 && status < 300) {
+      const result = response.json();
+      console.log('Upload successful:', result.id);
+      
+      return {
+        success: true,
+        path: fullPath,
+        id: result.id,
+        webUrl: result.webUrl,
+      };
+    } else {
+      const errorText = response.text();
       console.error('Upload error response:', errorText);
-      throw new Error(`Upload failed: ${response.status} ${response.statusText}`);
+      throw new Error(`Upload failed: ${status} - ${errorText}`);
     }
-    
-    const result = await response.json();
-    console.log('Upload successful:', result.id);
-    
-    return {
-      success: true,
-      path: fullPath,
-      id: result.id,
-      webUrl: result.webUrl,
-    };
   } catch (error) {
     console.error('OneDrive upload error:', error);
+    throw error;
+  }
+};
     throw error;
   }
 };

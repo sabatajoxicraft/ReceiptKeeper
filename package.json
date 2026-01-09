@@ -25,7 +25,8 @@
     "react-native-image-picker": "^7.2.3",
     "react-native-sqlite-storage": "^6.0.1",
     "react-native-toast-message": "^2.2.0",
-    "react-native-vision-camera": "^3.9.0"
+    "react-native-vision-camera": "^3.9.0",
+    "rn-fetch-blob": "^0.12.0"
   },
   "devDependencies": {
     "@react-native-community/cli": "12.3.6",
