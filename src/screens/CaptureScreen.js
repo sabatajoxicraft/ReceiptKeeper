@@ -12,6 +12,7 @@ import {
   Platform,
 } from 'react-native';
 import { launchCamera, launchImageLibrary } from 'react-native-image-picker';
+import RNFS from 'react-native-fs';
 import { getSetting } from '../database/database';
 import { APP_COLORS, PAYMENT_METHODS } from '../config/constants';
 import { saveImageToLocal } from '../utils/fileUtils';
@@ -69,25 +70,29 @@ const CaptureScreen = ({ onBack }) => {
     launchCamera(
       {
         mediaType: 'photo',
-        quality: 0.7, // Reduced from 0.8 to prevent memory issues
+        quality: 0.5, // Further reduced to 0.5 to prevent memory issues
         saveToPhotos: false,
-        includeBase64: true,
-        maxWidth: 2048, // Limit image size
-        maxHeight: 2048,
+        includeBase64: false, // Don't load base64 immediately to prevent freeze
+        maxWidth: 1600, // Reduced from 2048
+        maxHeight: 1600,
       },
-      async (response) => {
-        if (response.didCancel) {
-          console.log('User cancelled camera');
-        } else if (response.errorCode) {
-          await logError('CaptureScreen', new Error(response.errorMessage), 'Camera error', { errorCode: response.errorCode });
-          Alert.alert('Error', response.errorMessage);
-        } else if (response.assets && response.assets[0]) {
-          await logInfo('CaptureScreen', 'Image captured', { 
-            size: response.assets[0].fileSize,
-            width: response.assets[0].width,
-            height: response.assets[0].height 
-          });
-          setCapturedImage(response.assets[0]);
+      (response) => {
+        try {
+          if (response.didCancel) {
+            console.log('User cancelled camera');
+          } else if (response.errorCode) {
+            console.error('Camera error:', response.errorCode, response.errorMessage);
+            Alert.alert('Error', response.errorMessage);
+          } else if (response.assets && response.assets[0]) {
+            console.log('Image captured:', response.assets[0].fileSize, 'bytes');
+            // Use setTimeout to ensure state update doesn't block UI
+            setTimeout(() => {
+              setCapturedImage(response.assets[0]);
+            }, 100);
+          }
+        } catch (error) {
+          console.error('Error in camera callback:', error);
+          Alert.alert('Error', 'Failed to process image: ' + error.message);
         }
       }
     );
@@ -120,10 +125,15 @@ const CaptureScreen = ({ onBack }) => {
     try {
       await logInfo('CaptureScreen', 'Starting receipt processing', { paymentMethod, cardName });
 
+      // Read base64 from file path (lazy loading to prevent freeze)
+      await logInfo('CaptureScreen', 'Reading image file');
+      const base64Data = await RNFS.readFile(capturedImage.uri.replace('file://', ''), 'base64');
+      await logInfo('CaptureScreen', 'Image read successfully', { size: base64Data.length });
+
       // Save image locally (both internal and gallery)
       await logInfo('CaptureScreen', 'Saving image to local storage');
       const { filePath, filename, year, month, galleryPath } = await saveImageToLocal(
-        capturedImage.base64,
+        base64Data,
         'jpg'
       );
       await logInfo('CaptureScreen', 'Image saved successfully', { filePath, galleryPath });
