@@ -12,6 +12,7 @@ import { authorize } from 'react-native-app-auth';
 import { getSetting, saveSetting } from '../database/database';
 import RNFS from 'react-native-fs';
 import RNFetchBlob from 'rn-fetch-blob';
+const { fetch: fetchBlob, wrap } = RNFetchBlob;
 
 // OneDrive Personal OAuth Configuration
 const ONEDRIVE_CONFIG = {
@@ -255,14 +256,14 @@ export const uploadToOneDrive = async (localFilePath, remotePath) => {
     console.log(`Local file: ${localFilePath}`);
     
     // Use RNFetchBlob for proper binary upload
-    const response = await RNFetchBlob.fetch(
+    const response = await fetchBlob(
       'PUT',
       `https://graph.microsoft.com/v1.0/me/drive/root:${fullPath}:/content`,
       {
         Authorization: `Bearer ${accessToken}`,
         'Content-Type': 'image/jpeg',
       },
-      RNFetchBlob.wrap(localFilePath)
+      wrap(localFilePath)
     );
     
     const status = response.info().status;
