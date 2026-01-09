@@ -35,7 +35,7 @@ const fixes = [
   },
   {
     file: 'node_modules/rn-fetch-blob/android/build.gradle',
-    search: "implementation 'com.facebook.react:react-native:+'",
+    search: 'implementation "com.facebook.react:react-native:${safeExtGet(\'reactNativeVersion\', \'+\')}"',
     replace: 'compileOnly "com.facebook.react:react-android:0.73.6"'
   },
   {
