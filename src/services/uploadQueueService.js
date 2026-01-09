@@ -72,7 +72,8 @@ export const addToQueue = async (localPath, remotePath) => {
     
     // Try to upload immediately if online
     // Don't await this, let it run in background but handle errors
-    processQueue().catch(err => console.error('Background upload failed:', err));
+    // processQueue().catch(err => console.error('Background upload failed:', err));
+    console.log('Skipping auto-upload: manual sync only');
     
     return item.id;
   } catch (error) {
@@ -218,9 +219,10 @@ const processQueueItem = async (item) => {
       
       // Schedule retry with exponential backoff
       const delay = RETRY_DELAYS[newRetryCount - 1] || 60000;
-      setTimeout(() => {
-        processQueue().catch(err => console.error('Retry upload failed:', err));
-      }, delay);
+      // setTimeout(() => {
+      //   processQueue().catch(err => console.error('Retry upload failed:', err));
+      // }, delay);
+      console.log('Auto-retry disabled: will retry on manual sync');
     }
     
     return false;
