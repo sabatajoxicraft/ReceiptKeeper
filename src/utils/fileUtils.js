@@ -1,4 +1,5 @@
 import RNFS from 'react-native-fs';
+import { getSetting } from '../database/database';
 
 export const formatDateTime = (date = new Date()) => {
   const day = String(date.getDate()).padStart(2, '0');
@@ -17,16 +18,19 @@ export const getYearMonth = (date = new Date()) => {
 };
 
 /**
- * Save image to Downloads/ReceiptKeeper folder ONLY
- * Simple, clean, no permissions needed on Android 10+
+ * Save image to user-configured local path
  */
 export const saveImageToLocal = async (base64Data, extension = 'jpg') => {
   try {
     const { year, month } = getYearMonth();
     const filename = `${formatDateTime()}.${extension}`;
     
-    // Save to Downloads/ReceiptKeeper/YYYY/MM/ folder
-    const baseDir = `${RNFS.DownloadDirectoryPath}/ReceiptKeeper/${year}/${month}`;
+    // Get user-configured path from settings
+    const userPath = await getSetting('local_receipts_path');
+    const basePath = userPath || `${RNFS.DownloadDirectoryPath}/ReceiptKeeper`;
+    
+    // Save to [UserPath]/YYYY/MM/ folder
+    const baseDir = `${basePath}/${year}/${month}`;
     console.log('Creating directory:', baseDir);
     await RNFS.mkdir(baseDir, { intermediate: true });
     

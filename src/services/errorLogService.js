@@ -1,18 +1,35 @@
 /**
  * Error Logging Service
- * Logs errors to a file for debugging
+ * Logs errors to a user-configured path
  */
 
 import RNFS from 'react-native-fs';
+import { getSetting } from '../database/database';
 
-const LOG_FILE = `${RNFS.DocumentDirectoryPath}/error_log.txt`;
+/**
+ * Get log file path from settings
+ */
+const getLogFilePath = async () => {
+  const userPath = await getSetting('local_logs_path');
+  const basePath = userPath || `${RNFS.DownloadDirectoryPath}/ReceiptKeeper/Logs`;
+  
+  // Ensure directory exists
+  const dirExists = await RNFS.exists(basePath);
+  if (!dirExists) {
+    await RNFS.mkdir(basePath, { intermediate: true });
+  }
+  
+  return `${basePath}/error_log.txt`;
+};
+
 const MAX_LOG_SIZE = 100000; // 100KB max
 
 /**
  * Write log entry to file
  */
-export const logError = async (source, error, additionalInfo = {}) => {
+export const logError = async (source, error, message = '', additionalInfo = {}) => {
   try {
+    const LOG_FILE = await getLogFilePath();
     const timestamp = new Date().toISOString();
     const errorMessage = error instanceof Error ? error.message : String(error);
     const stack = error instanceof Error ? error.stack : '';
@@ -21,33 +38,30 @@ export const logError = async (source, error, additionalInfo = {}) => {
 ===========================================
 TIME: ${timestamp}
 SOURCE: ${source}
+MESSAGE: ${message}
 ERROR: ${errorMessage}
 STACK: ${stack}
 INFO: ${JSON.stringify(additionalInfo, null, 2)}
 ===========================================
 
 `;
-    
-    // Check if log file exists
-    const exists = await RNFS.exists(LOG_FILE);
-    
-    if (exists) {
-      // Check file size
+
+    // Check file size
+    const fileExists = await RNFS.exists(LOG_FILE);
+    if (fileExists) {
       const stats = await RNFS.stat(LOG_FILE);
       if (stats.size > MAX_LOG_SIZE) {
-        // Rotate log - keep last 50KB
+        // Keep last 50KB
         const content = await RNFS.readFile(LOG_FILE, 'utf8');
         const truncated = content.slice(-50000);
-        await RNFS.writeFile(LOG_FILE, '... (log rotated)\n\n' + truncated, 'utf8');
+        await RNFS.writeFile(LOG_FILE, truncated, 'utf8');
       }
     }
-    
-    // Append log entry
+
+    // Append log
     await RNFS.appendFile(LOG_FILE, logEntry, 'utf8');
-    
-    console.log(`Logged error to ${LOG_FILE}:`, errorMessage);
-  } catch (logError) {
-    console.error('Failed to write error log:', logError);
+  } catch (err) {
+    console.error('Failed to write log:', err);
   }
 };
 
@@ -56,30 +70,28 @@ INFO: ${JSON.stringify(additionalInfo, null, 2)}
  */
 export const logInfo = async (source, message, additionalInfo = {}) => {
   try {
+    const LOG_FILE = await getLogFilePath();
     const timestamp = new Date().toISOString();
     
-    const logEntry = `[${timestamp}] [INFO] [${source}] ${message} ${JSON.stringify(additionalInfo)}\n`;
+    const logEntry = `[${timestamp}] [${source}] ${message} ${JSON.stringify(additionalInfo)}\n`;
     
     await RNFS.appendFile(LOG_FILE, logEntry, 'utf8');
-  } catch (logError) {
-    console.error('Failed to write info log:', logError);
+  } catch (err) {
+    console.error('Failed to write info log:', err);
   }
 };
 
 /**
- * Get log file contents
+ * Get log content
  */
-export const getLogContents = async () => {
+export const getLog = async () => {
   try {
+    const LOG_FILE = await getLogFilePath();
     const exists = await RNFS.exists(LOG_FILE);
-    if (!exists) {
-      return 'No log file found';
-    }
+    if (!exists) return 'No logs yet';
     
-    const content = await RNFS.readFile(LOG_FILE, 'utf8');
-    return content;
+    return await RNFS.readFile(LOG_FILE, 'utf8');
   } catch (error) {
-    console.error('Failed to read log file:', error);
     return `Error reading log: ${error.message}`;
   }
 };
@@ -89,44 +101,31 @@ export const getLogContents = async () => {
  */
 export const clearLog = async () => {
   try {
-    const exists = await RNFS.exists(LOG_FILE);
-    if (exists) {
-      await RNFS.unlink(LOG_FILE);
-    }
-    console.log('Log file cleared');
+    const LOG_FILE = await getLogFilePath();
+    await RNFS.writeFile(LOG_FILE, '', 'utf8');
   } catch (error) {
-    console.error('Failed to clear log:', error);
+    console.error('Error clearing log:', error);
   }
 };
 
 /**
- * Copy log to gallery for easy access
+ * Export log to public location
  */
 export const exportLog = async () => {
   try {
-    const content = await getLogContents();
+    const LOG_FILE = await getLogFilePath();
+    const content = await getLog();
     const timestamp = new Date().toISOString().replace(/[:.]/g, '-');
-    const picturesPath = RNFS.PicturesDirectoryPath || '/storage/emulated/0/Pictures';
-    const receiptKeeperPath = `${picturesPath}/ReceiptKeeper`;
     
-    // Ensure directory exists
-    const dirExists = await RNFS.exists(receiptKeeperPath);
-    if (!dirExists) {
-      await RNFS.mkdir(receiptKeeperPath);
-    }
+    // Get user receipts path to export to same location
+    const userPath = await getSetting('local_receipts_path');
+    const basePath = userPath || `${RNFS.DownloadDirectoryPath}/ReceiptKeeper`;
     
-    const exportPath = `${receiptKeeperPath}/error_log_${timestamp}.txt`;
+    const exportPath = `${basePath}/error_log_${timestamp}.txt`;
     await RNFS.writeFile(exportPath, content, 'utf8');
     
-    console.log(`Log exported to: ${exportPath}`);
     return exportPath;
   } catch (error) {
-    console.error('Failed to export log:', error);
-    throw error;
+    throw new Error(`Failed to export log: ${error.message}`);
   }
 };
-
-/**
- * Get log file path
- */
-export const getLogPath = () => LOG_FILE;
