@@ -107,7 +107,9 @@ const SyncStatusBar = () => {
     Alert.alert('Cleared', 'Failed items removed from queue');
   };
 
-  // Always show the sync button
+  // Sync features disabled temporarily as per user request
+  return null;
+  /*
   return (
     <>
       <View style={styles.container}>
