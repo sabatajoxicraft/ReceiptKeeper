@@ -289,9 +289,6 @@ export const uploadToOneDrive = async (localFilePath, remotePath) => {
     throw error;
   }
 };
-    throw error;
-  }
-};
 
 /**
  * Get or set OneDrive base path
