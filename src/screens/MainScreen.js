@@ -12,7 +12,7 @@ import { getReceipts } from '../database/database';
 import { APP_COLORS } from '../config/constants';
 import SyncStatusBar from '../components/SyncStatusBar';
 
-const MainScreen = ({ onCapture, onSettings }) => {
+const MainScreen = ({ onCapture, onSettings, onViewLogs }) => {
   const [receipts, setReceipts] = useState([]);
   const [refreshing, setRefreshing] = useState(false);
   const [stats, setStats] = useState({ total: 0, thisMonth: 0 });
@@ -76,9 +76,14 @@ const MainScreen = ({ onCapture, onSettings }) => {
     <View style={styles.container}>
       <View style={styles.header}>
         <Text style={styles.title}>📱 Receipt Keeper</Text>
-        <TouchableOpacity onPress={onSettings}>
-          <Text style={styles.settingsButton}>⚙️</Text>
-        </TouchableOpacity>
+        <View style={styles.headerButtons}>
+          <TouchableOpacity onPress={onViewLogs} style={styles.headerButton}>
+            <Text style={styles.settingsButton}>📋</Text>
+          </TouchableOpacity>
+          <TouchableOpacity onPress={onSettings} style={styles.headerButton}>
+            <Text style={styles.settingsButton}>⚙️</Text>
+          </TouchableOpacity>
+        </View>
       </View>
 
       <View style={styles.statsContainer}>
@@ -140,6 +145,13 @@ const styles = StyleSheet.create({
     fontSize: 24,
     fontWeight: 'bold',
     color: APP_COLORS.text,
+  },
+  headerButtons: {
+    flexDirection: 'row',
+    gap: 15,
+  },
+  headerButton: {
+    padding: 5,
   },
   settingsButton: {
     fontSize: 28,

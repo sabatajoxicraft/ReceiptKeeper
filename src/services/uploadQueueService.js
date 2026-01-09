@@ -6,6 +6,7 @@
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import { uploadToOneDrive, isAuthenticated } from './onedriveService';
 import NetInfo from '@react-native-community/netinfo';
+import { logError, logInfo } from './errorLogService';
 
 const QUEUE_KEY = 'upload_queue';
 const MAX_RETRIES = 3;
@@ -149,24 +150,26 @@ const shouldUploadOnNetwork = async () => {
  */
 const processQueueItem = async (item) => {
   try {
+    await logInfo('UploadQueue', `Processing item: ${item.remotePath}`);
+    
     // Check if authenticated
     const authenticated = await isAuthenticated();
     if (!authenticated) {
-      console.log('Not authenticated, skipping upload');
+      await logInfo('UploadQueue', 'Not authenticated, skipping upload');
       return false;
     }
     
     // Check network
     const online = await isOnline();
     if (!online) {
-      console.log('Device offline, skipping upload');
+      await logInfo('UploadQueue', 'Device offline, skipping upload');
       return false;
     }
     
     // Check network type (WiFi preferred)
     const canUpload = await shouldUploadOnNetwork();
     if (!canUpload) {
-      console.log('Not on allowed network type, skipping upload');
+      await logInfo('UploadQueue', 'Not on allowed network type, skipping upload');
       return false;
     }
     
@@ -176,32 +179,36 @@ const processQueueItem = async (item) => {
     });
     
     // Attempt upload
-    console.log(`Uploading: ${item.remotePath}`);
+    await logInfo('UploadQueue', `Uploading: ${item.remotePath}`);
     const result = await uploadToOneDrive(item.localPath, item.remotePath);
     
-    console.log('Upload result:', result);
+    await logInfo('UploadQueue', 'Upload result', result);
     
     if (result && result.success) {
-      console.log(`Upload successful: ${item.remotePath}`);
+      await logInfo('UploadQueue', `Upload successful: ${item.remotePath}`);
       await removeFromQueue(item.id);
       return true;
     } else {
-      throw new Error('Upload failed');
+      throw new Error('Upload failed - no success flag');
     }
   } catch (error) {
-    console.error(`Upload failed for ${item.remotePath}:`, error.message);
+    await logError('UploadQueue', error, {
+      item: item.remotePath,
+      retryCount: item.retryCount,
+      localPath: item.localPath,
+    });
     
     // Increment retry count
     const newRetryCount = item.retryCount + 1;
     
     if (newRetryCount >= MAX_RETRIES) {
-      console.log(`Max retries reached for ${item.remotePath}, keeping in queue for manual retry`);
+      await logError('UploadQueue', new Error(`Max retries reached for ${item.remotePath}`));
       await updateQueueItem(item.id, {
         retryCount: newRetryCount,
         error: error.message,
       });
     } else {
-      console.log(`Will retry ${item.remotePath} (attempt ${newRetryCount}/${MAX_RETRIES})`);
+      await logInfo('UploadQueue', `Will retry ${item.remotePath} (attempt ${newRetryCount}/${MAX_RETRIES})`);
       await updateQueueItem(item.id, {
         retryCount: newRetryCount,
         error: error.message,

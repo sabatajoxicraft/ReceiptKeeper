@@ -12,6 +12,7 @@ import { initDatabase, getSetting } from './src/database/database';
 import SetupScreen from './src/screens/SetupScreen';
 import MainScreen from './src/screens/MainScreen';
 import CaptureScreen from './src/screens/CaptureScreen';
+import LogViewerScreen from './src/screens/LogViewerScreen';
 import Toast from 'react-native-toast-message';
 import { APP_COLORS } from './src/config/constants';
 import { processQueue } from './src/services/uploadQueueService';
@@ -71,6 +72,10 @@ const App = () => {
     setCurrentScreen('setup');
   };
 
+  const handleViewLogs = () => {
+    setCurrentScreen('logs');
+  };
+
   if (isLoading) {
     return (
       <SafeAreaView style={styles.container}>
@@ -91,8 +96,14 @@ const App = () => {
           <SetupScreen onSetupComplete={handleSetupComplete} />
         ) : currentScreen === 'capture' ? (
           <CaptureScreen onBack={handleBackToMain} />
+        ) : currentScreen === 'logs' ? (
+          <LogViewerScreen onBack={handleBackToMain} />
         ) : (
-          <MainScreen onCapture={handleCapture} onSettings={handleSettings} />
+          <MainScreen 
+            onCapture={handleCapture} 
+            onSettings={handleSettings}
+            onViewLogs={handleViewLogs}
+          />
         )}
       </SafeAreaView>
       <Toast />
