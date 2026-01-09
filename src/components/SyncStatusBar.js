@@ -8,10 +8,11 @@ import {
   Alert,
 } from 'react-native';
 import { APP_COLORS } from '../config/constants';
+import { getAllReceipts } from '../database/database';
 import {
   getQueueStats,
+  addToQueue,
   processQueue,
-  retryFailedItems,
   clearFailedItems,
 } from '../services/uploadQueueService';
 
@@ -21,10 +22,7 @@ const SyncStatusBar = () => {
 
   useEffect(() => {
     loadStats();
-    
-    // Refresh stats every 10 seconds
     const interval = setInterval(loadStats, 10000);
-    
     return () => clearInterval(interval);
   }, []);
 
@@ -36,125 +34,81 @@ const SyncStatusBar = () => {
   const handleSyncNow = async () => {
     setSyncing(true);
     try {
+      console.log('=== MANUAL SYNC STARTED ===');
+      
+      // Step 1: Get all receipts from database
+      const receipts = await getAllReceipts();
+      console.log('Found', receipts.length, 'receipts in database');
+      
+      // Step 2: Add each to queue
+      let queued = 0;
+      for (const receipt of receipts) {
+        await addToQueue(receipt.filePath, receipt.onedrivePath);
+        queued++;
+      }
+      console.log('Added', queued, 'receipts to upload queue');
+      
+      // Step 3: Process the queue
+      console.log('Processing upload queue...');
       const result = await processQueue();
+      console.log('Upload result:', result);
+      
       await loadStats();
       
-      if (result.processed > 0) {
-        Alert.alert(
-          'Sync Complete',
-          `✅ ${result.processed} uploaded${result.failed > 0 ? `\n⚠️ ${result.failed} skipped (check WiFi/auth)` : ''}`
-        );
-      } else if (result.failed > 0) {
-        Alert.alert(
-          'No Uploads', 
-          'Nothing uploaded. Possible reasons:\n\n• Not on WiFi\n• Not authenticated to OneDrive\n• No internet connection\n\nCheck settings and try again.'
-        );
-      } else {
-        Alert.alert('Queue Empty', 'All receipts are already synced!');
-      }
+      Alert.alert(
+        'Sync Complete',
+        `✅ Processed: ${result.processed}\n${result.failed > 0 ? `⚠️ Failed: ${result.failed}` : '✅ All uploaded!'}`
+      );
+      
+      console.log('=== MANUAL SYNC COMPLETE ===');
     } catch (error) {
-      Alert.alert('Error', 'Failed to sync: ' + error.message);
+      console.error('❌ Sync error:', error);
+      Alert.alert('Sync Error', error.message);
     } finally {
       setSyncing(false);
     }
   };
 
-  const handleRetryFailed = async () => {
-    Alert.alert(
-      'Retry Failed Uploads',
-      'Retry all failed uploads?',
-      [
-        { text: 'Cancel', style: 'cancel' },
-        {
-          text: 'Retry',
-          onPress: async () => {
-            setSyncing(true);
-            try {
-              const result = await retryFailedItems();
-              await loadStats();
-              Alert.alert('Retry Complete', `✅ ${result.processed} uploaded`);
-            } finally {
-              setSyncing(false);
-            }
-          },
-        },
-      ]
-    );
-  };
-
   const handleClearFailed = async () => {
-    Alert.alert(
-      'Clear Failed',
-      'Remove failed uploads from queue? This cannot be undone.',
-      [
-        { text: 'Cancel', style: 'cancel' },
-        {
-          text: 'Clear',
-          style: 'destructive',
-          onPress: async () => {
-            await clearFailedItems();
-            await loadStats();
-          },
-        },
-      ]
-    );
+    await clearFailedItems();
+    await loadStats();
+    Alert.alert('Cleared', 'Failed items removed from queue');
   };
 
-  // Don't show if queue is empty
   if (stats.total === 0) {
-    return null;
+    return null; // Don't show if nothing to sync
   }
 
   return (
     <View style={styles.container}>
-      <View style={styles.statusRow}>
-        <View style={styles.statusInfo}>
-          {syncing ? (
-            <>
-              <ActivityIndicator size="small" color={APP_COLORS.primary} />
-              <Text style={styles.statusText}>Syncing...</Text>
-            </>
-          ) : (
-            <>
-              <Text style={styles.statusIcon}>☁️</Text>
-              <Text style={styles.statusText}>
-                {stats.pending > 0 ? `${stats.pending} pending` : 'Synced'}
-                {stats.failed > 0 && ` • ${stats.failed} failed`}
-              </Text>
-            </>
-          )}
-        </View>
+      <View style={styles.statusContainer}>
+        <Text style={styles.statusText}>
+          📤 Queue: {stats.pending} pending
+          {stats.failed > 0 && ` • ⚠️ ${stats.failed} failed`}
+        </Text>
+      </View>
 
-        <View style={styles.buttonGroup}>
-          {stats.pending > 0 && (
-            <TouchableOpacity
-              style={styles.syncButton}
-              onPress={handleSyncNow}
-              disabled={syncing}
-            >
-              <Text style={styles.syncButtonText}>Sync Now</Text>
-            </TouchableOpacity>
+      <View style={styles.buttonContainer}>
+        <TouchableOpacity
+          style={[styles.button, styles.syncButton]}
+          onPress={handleSyncNow}
+          disabled={syncing}
+        >
+          {syncing ? (
+            <ActivityIndicator size="small" color="#fff" />
+          ) : (
+            <Text style={styles.buttonText}>Sync Now</Text>
           )}
-          
-          {stats.failed > 0 && (
-            <>
-              <TouchableOpacity
-                style={styles.retryButton}
-                onPress={handleRetryFailed}
-                disabled={syncing}
-              >
-                <Text style={styles.retryButtonText}>Retry</Text>
-              </TouchableOpacity>
-              <TouchableOpacity
-                style={styles.clearButton}
-                onPress={handleClearFailed}
-                disabled={syncing}
-              >
-                <Text style={styles.clearButtonText}>×</Text>
-              </TouchableOpacity>
-            </>
-          )}
-        </View>
+        </TouchableOpacity>
+
+        {stats.failed > 0 && (
+          <TouchableOpacity
+            style={[styles.button, styles.clearButton]}
+            onPress={handleClearFailed}
+          >
+            <Text style={styles.buttonText}>Clear Failed</Text>
+          </TouchableOpacity>
+        )}
       </View>
     </View>
   );
@@ -162,67 +116,39 @@ const SyncStatusBar = () => {
 
 const styles = StyleSheet.create({
   container: {
-    backgroundColor: APP_COLORS.surface,
-    borderRadius: 12,
+    backgroundColor: '#fff',
+    borderBottomWidth: 1,
+    borderBottomColor: '#e0e0e0',
     padding: 12,
-    marginBottom: 15,
-    borderWidth: 1,
-    borderColor: APP_COLORS.border,
   },
-  statusRow: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    justifyContent: 'space-between',
-  },
-  statusInfo: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    flex: 1,
-  },
-  statusIcon: {
-    fontSize: 20,
-    marginRight: 8,
+  statusContainer: {
+    marginBottom: 8,
   },
   statusText: {
-    fontSize: 14,
-    color: APP_COLORS.text,
-    marginLeft: 8,
+    fontSize: 13,
+    color: '#666',
   },
-  buttonGroup: {
+  buttonContainer: {
     flexDirection: 'row',
     gap: 8,
   },
+  button: {
+    paddingHorizontal: 16,
+    paddingVertical: 8,
+    borderRadius: 6,
+    minWidth: 100,
+    alignItems: 'center',
+  },
   syncButton: {
     backgroundColor: APP_COLORS.primary,
-    paddingHorizontal: 12,
-    paddingVertical: 6,
-    borderRadius: 6,
-  },
-  syncButtonText: {
-    color: '#FFFFFF',
-    fontSize: 13,
-    fontWeight: '600',
-  },
-  retryButton: {
-    backgroundColor: APP_COLORS.warning,
-    paddingHorizontal: 12,
-    paddingVertical: 6,
-    borderRadius: 6,
-  },
-  retryButtonText: {
-    color: '#FFFFFF',
-    fontSize: 13,
-    fontWeight: '600',
+    flex: 1,
   },
   clearButton: {
-    backgroundColor: APP_COLORS.error,
-    paddingHorizontal: 10,
-    paddingVertical: 6,
-    borderRadius: 6,
+    backgroundColor: '#ff6b6b',
   },
-  clearButtonText: {
-    color: '#FFFFFF',
-    fontSize: 16,
+  buttonText: {
+    color: '#fff',
+    fontSize: 13,
     fontWeight: '600',
   },
 });

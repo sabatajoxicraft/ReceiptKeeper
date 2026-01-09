@@ -18,8 +18,6 @@ import { APP_COLORS, PAYMENT_METHODS } from '../config/constants';
 import { saveImageToLocal } from '../utils/fileUtils';
 import { saveReceipt } from '../database/database';
 import { buildOneDrivePath } from '../services/onedriveService';
-import { addToQueue } from '../services/uploadQueueService';
-import { logError, logInfo } from '../services/errorLogService';
 import Toast from 'react-native-toast-message';
 
 const CaptureScreen = ({ onBack }) => {
@@ -123,27 +121,28 @@ const CaptureScreen = ({ onBack }) => {
     setProcessing(true);
 
     try {
-      await logInfo('CaptureScreen', 'Starting receipt processing', { paymentMethod, cardName });
+      console.log('=== START: Processing receipt ===');
+      console.log('Payment method:', paymentMethod, 'Card:', cardName);
 
-      // Read base64 from file path (lazy loading to prevent freeze)
-      await logInfo('CaptureScreen', 'Reading image file');
+      // Step 1: Read base64 from file path (lazy loading to prevent freeze)
+      console.log('Step 1: Reading image file from:', capturedImage.uri);
       const base64Data = await RNFS.readFile(capturedImage.uri.replace('file://', ''), 'base64');
-      await logInfo('CaptureScreen', 'Image read successfully', { size: base64Data.length });
+      console.log('✅ Image read successfully, size:', base64Data.length, 'bytes');
 
-      // Save image locally (both internal and gallery)
-      await logInfo('CaptureScreen', 'Saving image to local storage');
-      const { filePath, filename, year, month, galleryPath } = await saveImageToLocal(
+      // Step 2: Save image to Downloads/ReceiptKeeper folder
+      console.log('Step 2: Saving to Downloads folder');
+      const { filePath, filename, year, month } = await saveImageToLocal(
         base64Data,
         'jpg'
       );
-      await logInfo('CaptureScreen', 'Image saved successfully', { filePath, galleryPath });
+      console.log('✅ Image saved to:', filePath);
 
-      // Build OneDrive path
+      // Step 3: Build OneDrive path
       const onedrivePath = buildOneDrivePath(year, month, filename);
-      await logInfo('CaptureScreen', 'OneDrive path built', { onedrivePath });
+      console.log('Step 3: OneDrive path:', onedrivePath);
 
-      // Save to database
-      await logInfo('CaptureScreen', 'Saving to database');
+      // Step 4: Save to database
+      console.log('Step 4: Saving to database');
       await saveReceipt({
         filename,
         filePath,
@@ -153,25 +152,21 @@ const CaptureScreen = ({ onBack }) => {
         year,
         month,
       });
-      await logInfo('CaptureScreen', 'Database save successful');
+      console.log('✅ Database save successful');
 
-      // Add to upload queue (background processing)
-      await logInfo('CaptureScreen', 'Adding to upload queue');
-      await addToQueue(filePath, onedrivePath);
-      await logInfo('CaptureScreen', 'Added to queue successfully');
+      // DO NOT auto-upload - wait for manual sync button
+      console.log('⏸️  NOT adding to upload queue (manual sync only)');
 
       // Show success message
-      const saveLocation = galleryPath 
-        ? '📱 Gallery\n💾 Queued for OneDrive'
-        : `💾 Queued for OneDrive`;
-      
       Toast.show({
         type: 'success',
         text1: '✅ Receipt Saved!',
-        text2: saveLocation,
+        text2: `📁 ${filePath}`,
         position: 'top',
-        visibilityTime: 3000,
+        visibilityTime: 4000,
       });
+
+      console.log('=== DONE: Receipt processing complete ===');
 
       // Reset and go back
       setTimeout(() => {
@@ -180,14 +175,11 @@ const CaptureScreen = ({ onBack }) => {
         onBack();
       }, 800);
     } catch (error) {
-      await logError('CaptureScreen', error, 'Failed to process receipt', { 
-        paymentMethod, 
-        cardName,
-        hasImage: !!capturedImage,
-        imageSize: capturedImage?.base64?.length 
-      });
+      console.error('❌ ERROR processing receipt:', error);
+      console.error('Error details:', error.message);
+      console.error('Stack trace:', error.stack);
       setProcessing(false);
-      Alert.alert('Error', 'Failed to save receipt: ' + error.message + '\n\nCheck logs for details.');
+      Alert.alert('Error', 'Failed to save receipt: ' + error.message);
     }
   };
 
