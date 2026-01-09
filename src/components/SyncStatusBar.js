@@ -42,10 +42,15 @@ const SyncStatusBar = () => {
       if (result.processed > 0) {
         Alert.alert(
           'Sync Complete',
-          `✅ ${result.processed} uploaded\n${result.failed > 0 ? `❌ ${result.failed} failed` : ''}`
+          `✅ ${result.processed} uploaded${result.failed > 0 ? `\n⚠️ ${result.failed} skipped (check WiFi/auth)` : ''}`
         );
       } else if (result.failed > 0) {
-        Alert.alert('Sync Failed', 'Check your internet connection and try again');
+        Alert.alert(
+          'No Uploads', 
+          'Nothing uploaded. Possible reasons:\n\n• Not on WiFi\n• Not authenticated to OneDrive\n• No internet connection\n\nCheck settings and try again.'
+        );
+      } else {
+        Alert.alert('Queue Empty', 'All receipts are already synced!');
       }
     } catch (error) {
       Alert.alert('Error', 'Failed to sync: ' + error.message);

@@ -113,19 +113,35 @@ const updateQueueItem = async (itemId, updates) => {
  * Check if device is online
  */
 const isOnline = async () => {
-  const netInfo = await NetInfo.fetch();
-  return netInfo.isConnected && netInfo.isInternetReachable;
+  try {
+    const netInfo = await NetInfo.fetch();
+    console.log('Network info:', netInfo);
+    // isInternetReachable can be null on some devices, so treat null as true
+    return netInfo.isConnected === true && (netInfo.isInternetReachable === true || netInfo.isInternetReachable === null);
+  } catch (error) {
+    console.error('Error checking network:', error);
+    return false;
+  }
 };
 
 /**
- * Check if should use cellular data
+ * Check if should upload based on network type
  * Can be configured by user later
  */
-const shouldUseCellular = async () => {
-  // TODO: Add user preference
-  // For now, only upload on WiFi
-  const netInfo = await NetInfo.fetch();
-  return netInfo.type === 'wifi';
+const shouldUploadOnNetwork = async () => {
+  try {
+    const netInfo = await NetInfo.fetch();
+    console.log('Checking network type:', netInfo.type);
+    
+    // TODO: Add user preference for cellular data usage
+    // For now, allow WiFi and unknown types (some devices report 'unknown')
+    const allowedTypes = ['wifi', 'ethernet', 'unknown'];
+    return allowedTypes.includes(netInfo.type);
+  } catch (error) {
+    console.error('Error checking network type:', error);
+    // If we can't check, allow upload attempt
+    return true;
+  }
 };
 
 /**
@@ -147,10 +163,10 @@ const processQueueItem = async (item) => {
       return false;
     }
     
-    // Check if WiFi (optional)
-    const canUpload = await shouldUseCellular();
+    // Check network type (WiFi preferred)
+    const canUpload = await shouldUploadOnNetwork();
     if (!canUpload) {
-      console.log('Not on WiFi, skipping upload');
+      console.log('Not on allowed network type, skipping upload');
       return false;
     }
     
@@ -163,7 +179,9 @@ const processQueueItem = async (item) => {
     console.log(`Uploading: ${item.remotePath}`);
     const result = await uploadToOneDrive(item.localPath, item.remotePath);
     
-    if (result.success) {
+    console.log('Upload result:', result);
+    
+    if (result && result.success) {
       console.log(`Upload successful: ${item.remotePath}`);
       await removeFromQueue(item.id);
       return true;

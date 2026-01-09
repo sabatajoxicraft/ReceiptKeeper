@@ -250,11 +250,15 @@ export const uploadToOneDrive = async (localFilePath, remotePath) => {
     const basePath = await getOneDriveBasePath();
     const fullPath = `${basePath}${remotePath}`;
     
+    console.log(`Uploading to OneDrive: ${fullPath}`);
+    
     // Read file as base64
     const fileData = await RNFS.readFile(localFilePath, 'base64');
     
-    // Convert base64 to binary
-    const binaryData = Buffer.from(fileData, 'base64');
+    // For React Native, we need to convert base64 to blob/array buffer
+    // Using fetch with base64 data URL
+    const base64Response = await fetch(`data:image/jpeg;base64,${fileData}`);
+    const blob = await base64Response.blob();
     
     // Upload using simple upload (< 4MB)
     const response = await fetch(
@@ -265,15 +269,20 @@ export const uploadToOneDrive = async (localFilePath, remotePath) => {
           Authorization: `Bearer ${accessToken}`,
           'Content-Type': 'image/jpeg',
         },
-        body: binaryData,
+        body: blob,
       }
     );
     
+    console.log(`Upload response status: ${response.status}`);
+    
     if (!response.ok) {
+      const errorText = await response.text();
+      console.error('Upload error response:', errorText);
       throw new Error(`Upload failed: ${response.status} ${response.statusText}`);
     }
     
     const result = await response.json();
+    console.log('Upload successful:', result.id);
     
     return {
       success: true,
