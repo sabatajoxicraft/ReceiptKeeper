@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import {
   View,
   Text,
@@ -9,19 +9,25 @@ import {
   Share,
 } from 'react-native';
 import { APP_COLORS } from '../config/constants';
-import { getLogContents, clearLog, exportLog, getLogPath } from '../services/errorLogService';
+import { getLog, clearLog, exportLog } from '../services/errorLogService';
 
 const LogViewerScreen = ({ onBack }) => {
   const [logs, setLogs] = useState('');
   const [loading, setLoading] = useState(false);
 
+  useEffect(() => {
+    loadLogs();
+  }, []);
+
   const loadLogs = async () => {
     setLoading(true);
     try {
-      const content = await getLogContents();
-      setLogs(content);
+      const content = await getLog();
+      setLogs(content || 'No logs available');
     } catch (error) {
+      console.error('Error loading logs:', error);
       Alert.alert('Error', 'Failed to load logs: ' + error.message);
+      setLogs('Error loading logs: ' + error.message);
     } finally {
       setLoading(false);
     }
@@ -51,7 +57,7 @@ const LogViewerScreen = ({ onBack }) => {
       const path = await exportLog();
       Alert.alert(
         'Exported',
-        `Logs saved to:\n${path}\n\nCheck Pictures/ReceiptKeeper folder`,
+        `Logs saved to:\n${path}`,
         [{ text: 'OK' }]
       );
     } catch (error) {
@@ -61,7 +67,11 @@ const LogViewerScreen = ({ onBack }) => {
 
   const handleShareLogs = async () => {
     try {
-      const content = await getLogContents();
+      const content = await getLog();
+      if (!content) {
+        Alert.alert('No Logs', 'No logs to share');
+        return;
+      }
       await Share.share({
         message: content,
         title: 'Receipt Keeper Error Logs',

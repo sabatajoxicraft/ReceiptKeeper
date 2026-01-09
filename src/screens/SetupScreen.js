@@ -10,6 +10,7 @@ import {
   ActivityIndicator,
   Modal,
 } from 'react-native';
+import DocumentPicker from 'react-native-document-picker';
 import { getSetting, saveSetting } from '../database/database';
 import { DEFAULT_CARDS, APP_COLORS } from '../config/constants';
 import {
@@ -154,6 +155,36 @@ const SetupScreen = ({ onSetupComplete }) => {
     setCards(newCards);
   };
 
+  const handleBrowseReceiptsFolder = async () => {
+    try {
+      const result = await DocumentPicker.pickDirectory();
+      if (result && result.uri) {
+        // Convert content:// URI to file path
+        const path = decodeURIComponent(result.uri.replace('content://com.android.externalstorage.documents/tree/primary:', '/storage/emulated/0/'));
+        setLocalReceiptsPath(path);
+      }
+    } catch (err) {
+      if (!DocumentPicker.isCancel(err)) {
+        Alert.alert('Error', 'Failed to pick folder: ' + err.message);
+      }
+    }
+  };
+
+  const handleBrowseLogsFolder = async () => {
+    try {
+      const result = await DocumentPicker.pickDirectory();
+      if (result && result.uri) {
+        // Convert content:// URI to file path
+        const path = decodeURIComponent(result.uri.replace('content://com.android.externalstorage.documents/tree/primary:', '/storage/emulated/0/'));
+        setLocalLogsPath(path);
+      }
+    } catch (err) {
+      if (!DocumentPicker.isCancel(err)) {
+        Alert.alert('Error', 'Failed to pick folder: ' + err.message);
+      }
+    }
+  };
+
   if (loading) {
     return (
       <View style={styles.centerContainer}>
@@ -213,27 +244,43 @@ const SetupScreen = ({ onSetupComplete }) => {
         <Text style={styles.sectionTitle}>💾 Local Storage Paths</Text>
         
         <Text style={styles.inputLabel}>Receipt Images Folder:</Text>
-        <TextInput
-          style={styles.pathInput}
-          value={localReceiptsPath}
-          onChangeText={setLocalReceiptsPath}
-          placeholder="/storage/emulated/0/Download/ReceiptKeeper"
-          placeholderTextColor={APP_COLORS.textSecondary}
-          autoCapitalize="none"
-        />
+        <View style={styles.folderInputContainer}>
+          <TextInput
+            style={styles.folderInput}
+            value={localReceiptsPath}
+            onChangeText={setLocalReceiptsPath}
+            placeholder="/storage/emulated/0/Download/ReceiptKeeper"
+            placeholderTextColor={APP_COLORS.textSecondary}
+            autoCapitalize="none"
+          />
+          <TouchableOpacity 
+            style={styles.browseButton} 
+            onPress={handleBrowseReceiptsFolder}
+          >
+            <Text style={styles.browseButtonText}>Browse</Text>
+          </TouchableOpacity>
+        </View>
         <Text style={styles.hint}>
           Full path where receipt images will be saved
         </Text>
 
         <Text style={[styles.inputLabel, { marginTop: 16 }]}>Log Files Folder:</Text>
-        <TextInput
-          style={styles.pathInput}
-          value={localLogsPath}
-          onChangeText={setLocalLogsPath}
-          placeholder="/storage/emulated/0/Download/ReceiptKeeper/Logs"
-          placeholderTextColor={APP_COLORS.textSecondary}
-          autoCapitalize="none"
-        />
+        <View style={styles.folderInputContainer}>
+          <TextInput
+            style={styles.folderInput}
+            value={localLogsPath}
+            onChangeText={setLocalLogsPath}
+            placeholder="/storage/emulated/0/Download/ReceiptKeeper/Logs"
+            placeholderTextColor={APP_COLORS.textSecondary}
+            autoCapitalize="none"
+          />
+          <TouchableOpacity 
+            style={styles.browseButton} 
+            onPress={handleBrowseLogsFolder}
+          >
+            <Text style={styles.browseButtonText}>Browse</Text>
+          </TouchableOpacity>
+        </View>
         <Text style={styles.hint}>
           Full path where error/debug logs will be saved
         </Text>

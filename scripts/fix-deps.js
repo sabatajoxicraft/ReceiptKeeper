@@ -42,6 +42,11 @@ const fixes = [
     file: 'node_modules/rn-fetch-blob/android/build.gradle',
     search: 'android {',
     replace: 'android {\n    namespace "com.RNFetchBlob"'
+  },
+  {
+    file: 'node_modules/react-native-document-picker/android/build.gradle',
+    search: "implementation 'com.facebook.react:react-native:+'",
+    replace: 'compileOnly "com.facebook.react:react-android:0.73.6"'
   }
 ];
 

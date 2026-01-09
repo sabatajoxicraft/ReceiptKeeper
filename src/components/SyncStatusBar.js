@@ -75,16 +75,16 @@ const SyncStatusBar = () => {
     Alert.alert('Cleared', 'Failed items removed from queue');
   };
 
-  if (stats.total === 0) {
-    return null; // Don't show if nothing to sync
-  }
-
+  // Always show the sync button
   return (
     <View style={styles.container}>
       <View style={styles.statusContainer}>
         <Text style={styles.statusText}>
-          📤 Queue: {stats.pending} pending
-          {stats.failed > 0 && ` • ⚠️ ${stats.failed} failed`}
+          {stats.total > 0 ? (
+            <>📤 Queue: {stats.pending} pending{stats.failed > 0 && ` • ⚠️ ${stats.failed} failed`}</>
+          ) : (
+            '📤 Ready to sync receipts'
+          )}
         </Text>
       </View>
 
