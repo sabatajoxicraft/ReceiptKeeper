@@ -6,6 +6,7 @@ import {
   TouchableOpacity,
   ActivityIndicator,
   Alert,
+  Modal,
 } from 'react-native';
 import { APP_COLORS } from '../config/constants';
 import { getReceipts } from '../database/database';
@@ -15,9 +16,11 @@ import {
   processQueue,
   clearFailedItems,
 } from '../services/uploadQueueService';
+import SyncDebugInfo from './SyncDebugInfo';
 
 const SyncStatusBar = () => {
   const [stats, setStats] = useState({ total: 0, pending: 0, failed: 0 });
+  const [showDebug, setShowDebug] = useState(false);
   const [syncing, setSyncing] = useState(false);
 
   useEffect(() => {
@@ -75,10 +78,19 @@ const SyncStatusBar = () => {
       
       await loadStats();
       
-      Alert.alert(
-        'Sync Complete',
-        `✅ Processed: ${result.processed}\n${result.failed > 0 ? `⚠️ Failed: ${result.failed}` : '✅ All uploaded!'}`
-      );
+      // Show detailed results
+      if (result.failed > 0) {
+        Alert.alert(
+          'Sync Results',
+          `✅ Uploaded: ${result.processed - result.failed}\n⚠️ Failed: ${result.failed}\n\nCheck logs (📋 button) for error details.\n\nCommon issues:\n• Not signed in to OneDrive\n• Not on WiFi\n• File doesn't exist\n• OneDrive folder invalid`,
+          [{ text: 'OK' }]
+        );
+      } else {
+        Alert.alert(
+          'Sync Complete',
+          `✅ All ${result.processed} receipts uploaded successfully!`
+        );
+      }
       
       console.log('=== MANUAL SYNC COMPLETE ===');
     } catch (error) {
@@ -97,40 +109,50 @@ const SyncStatusBar = () => {
 
   // Always show the sync button
   return (
-    <View style={styles.container}>
-      <View style={styles.statusContainer}>
-        <Text style={styles.statusText}>
-          {stats.total > 0 ? (
-            <>📤 Queue: {stats.pending} pending{stats.failed > 0 && ` • ⚠️ ${stats.failed} failed`}</>
-          ) : (
-            '📤 Ready to sync receipts'
-          )}
-        </Text>
-      </View>
-
-      <View style={styles.buttonContainer}>
-        <TouchableOpacity
-          style={[styles.button, styles.syncButton]}
-          onPress={handleSyncNow}
-          disabled={syncing}
-        >
-          {syncing ? (
-            <ActivityIndicator size="small" color="#fff" />
-          ) : (
-            <Text style={styles.buttonText}>Sync Now</Text>
-          )}
-        </TouchableOpacity>
-
-        {stats.failed > 0 && (
-          <TouchableOpacity
-            style={[styles.button, styles.clearButton]}
-            onPress={handleClearFailed}
-          >
-            <Text style={styles.buttonText}>Clear Failed</Text>
+    <>
+      <View style={styles.container}>
+        <View style={styles.statusContainer}>
+          <Text style={styles.statusText}>
+            {stats.total > 0 ? (
+              <>📤 Queue: {stats.pending} pending{stats.failed > 0 && ` • ⚠️ ${stats.failed} failed`}</>
+            ) : (
+              '📤 Ready to sync receipts'
+            )}
+          </Text>
+          <TouchableOpacity onPress={() => setShowDebug(true)} style={styles.debugButton}>
+            <Text style={styles.debugButtonText}>ℹ️</Text>
           </TouchableOpacity>
-        )}
+        </View>
+
+        <View style={styles.buttonContainer}>
+          <TouchableOpacity
+            style={[styles.button, styles.syncButton]}
+            onPress={handleSyncNow}
+            disabled={syncing}
+          >
+            {syncing ? (
+              <ActivityIndicator size="small" color="#fff" />
+            ) : (
+              <Text style={styles.buttonText}>Sync Now</Text>
+            )}
+          </TouchableOpacity>
+
+          {stats.failed > 0 && (
+            <TouchableOpacity
+              style={[styles.button, styles.clearButton]}
+              onPress={handleClearFailed}
+            >
+              <Text style={styles.buttonText}>Clear Failed</Text>
+            </TouchableOpacity>
+          )}
+        </View>
       </View>
-    </View>
+
+      <Modal visible={showDebug} animationType="slide" transparent={true}>
+        <SyncDebugInfo onClose={() => setShowDebug(false)} />
+      </Modal>
+    </>
+  );
   );
 };
 
@@ -142,11 +164,21 @@ const styles = StyleSheet.create({
     padding: 12,
   },
   statusContainer: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
     marginBottom: 8,
   },
   statusText: {
     fontSize: 13,
     color: '#666',
+    flex: 1,
+  },
+  debugButton: {
+    padding: 4,
+  },
+  debugButtonText: {
+    fontSize: 18,
   },
   buttonContainer: {
     flexDirection: 'row',
