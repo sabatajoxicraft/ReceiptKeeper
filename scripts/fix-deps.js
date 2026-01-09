@@ -47,6 +47,11 @@ const fixes = [
     file: 'node_modules/react-native-document-picker/android/build.gradle',
     search: "implementation 'com.facebook.react:react-native:+'",
     replace: 'compileOnly "com.facebook.react:react-android:0.73.6"'
+  },
+  {
+    file: 'node_modules/react-native-document-picker/android/build.gradle',
+    search: 'android {',
+    replace: 'android {\n    buildFeatures {\n        buildConfig true\n    }'
   }
 ];
 
