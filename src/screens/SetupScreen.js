@@ -159,12 +159,28 @@ const SetupScreen = ({ onSetupComplete }) => {
     try {
       const result = await DocumentPicker.pickDirectory();
       if (result && result.uri) {
+        console.log('Picked URI:', result.uri);
+        
         // Convert content:// URI to file path
-        const path = decodeURIComponent(result.uri.replace('content://com.android.externalstorage.documents/tree/primary:', '/storage/emulated/0/'));
+        let path = result.uri;
+        
+        // Handle different URI formats
+        if (path.startsWith('content://com.android.externalstorage.documents/tree/primary:')) {
+          // Remove the content URI prefix and convert to file path
+          path = path.replace('content://com.android.externalstorage.documents/tree/primary:', '');
+          path = decodeURIComponent(path);
+          path = `/storage/emulated/0/${path}`;
+        } else if (path.startsWith('content://')) {
+          Alert.alert('Info', 'Please use the text field to enter the path manually.\n\nExample:\n/storage/emulated/0/Download/ReceiptKeeper');
+          return;
+        }
+        
+        console.log('Converted path:', path);
         setLocalReceiptsPath(path);
       }
     } catch (err) {
       if (!DocumentPicker.isCancel(err)) {
+        console.error('Browse error:', err);
         Alert.alert('Error', 'Failed to pick folder: ' + err.message);
       }
     }
@@ -174,12 +190,28 @@ const SetupScreen = ({ onSetupComplete }) => {
     try {
       const result = await DocumentPicker.pickDirectory();
       if (result && result.uri) {
+        console.log('Picked URI:', result.uri);
+        
         // Convert content:// URI to file path
-        const path = decodeURIComponent(result.uri.replace('content://com.android.externalstorage.documents/tree/primary:', '/storage/emulated/0/'));
+        let path = result.uri;
+        
+        // Handle different URI formats
+        if (path.startsWith('content://com.android.externalstorage.documents/tree/primary:')) {
+          // Remove the content URI prefix and convert to file path
+          path = path.replace('content://com.android.externalstorage.documents/tree/primary:', '');
+          path = decodeURIComponent(path);
+          path = `/storage/emulated/0/${path}`;
+        } else if (path.startsWith('content://')) {
+          Alert.alert('Info', 'Please use the text field to enter the path manually.\n\nExample:\n/storage/emulated/0/Download/ReceiptKeeper/Logs');
+          return;
+        }
+        
+        console.log('Converted path:', path);
         setLocalLogsPath(path);
       }
     } catch (err) {
       if (!DocumentPicker.isCancel(err)) {
+        console.error('Browse error:', err);
         Alert.alert('Error', 'Failed to pick folder: ' + err.message);
       }
     }
@@ -242,6 +274,9 @@ const SetupScreen = ({ onSetupComplete }) => {
       {/* Local Storage Paths Section */}
       <View style={styles.section}>
         <Text style={styles.sectionTitle}>💾 Local Storage Paths</Text>
+        <Text style={styles.hint}>
+          ⚠️ Use text fields below - Browse buttons may give content:// URIs that don't work
+        </Text>
         
         <Text style={styles.inputLabel}>Receipt Images Folder:</Text>
         <View style={styles.folderInputContainer}>
@@ -261,7 +296,7 @@ const SetupScreen = ({ onSetupComplete }) => {
           </TouchableOpacity>
         </View>
         <Text style={styles.hint}>
-          Full path where receipt images will be saved
+          Example: /storage/emulated/0/Download/ReceiptKeeper
         </Text>
 
         <Text style={[styles.inputLabel, { marginTop: 16 }]}>Log Files Folder:</Text>
@@ -282,7 +317,7 @@ const SetupScreen = ({ onSetupComplete }) => {
           </TouchableOpacity>
         </View>
         <Text style={styles.hint}>
-          Full path where error/debug logs will be saved
+          Example: /storage/emulated/0/Download/ReceiptKeeper/Logs
         </Text>
       </View>
 
