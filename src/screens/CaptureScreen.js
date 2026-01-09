@@ -18,6 +18,7 @@ import { saveImageToLocal } from '../utils/fileUtils';
 import { saveReceipt } from '../database/database';
 import { buildOneDrivePath } from '../services/onedriveService';
 import { addToQueue } from '../services/uploadQueueService';
+import { logError, logInfo } from '../services/errorLogService';
 import Toast from 'react-native-toast-message';
 
 const CaptureScreen = ({ onBack }) => {
@@ -68,16 +69,24 @@ const CaptureScreen = ({ onBack }) => {
     launchCamera(
       {
         mediaType: 'photo',
-        quality: 0.8,
+        quality: 0.7, // Reduced from 0.8 to prevent memory issues
         saveToPhotos: false,
         includeBase64: true,
+        maxWidth: 2048, // Limit image size
+        maxHeight: 2048,
       },
-      (response) => {
+      async (response) => {
         if (response.didCancel) {
           console.log('User cancelled camera');
         } else if (response.errorCode) {
+          await logError('CaptureScreen', new Error(response.errorMessage), 'Camera error', { errorCode: response.errorCode });
           Alert.alert('Error', response.errorMessage);
         } else if (response.assets && response.assets[0]) {
+          await logInfo('CaptureScreen', 'Image captured', { 
+            size: response.assets[0].fileSize,
+            width: response.assets[0].width,
+            height: response.assets[0].height 
+          });
           setCapturedImage(response.assets[0]);
         }
       }
@@ -109,16 +118,22 @@ const CaptureScreen = ({ onBack }) => {
     setProcessing(true);
 
     try {
+      await logInfo('CaptureScreen', 'Starting receipt processing', { paymentMethod, cardName });
+
       // Save image locally (both internal and gallery)
+      await logInfo('CaptureScreen', 'Saving image to local storage');
       const { filePath, filename, year, month, galleryPath } = await saveImageToLocal(
         capturedImage.base64,
         'jpg'
       );
+      await logInfo('CaptureScreen', 'Image saved successfully', { filePath, galleryPath });
 
       // Build OneDrive path
       const onedrivePath = buildOneDrivePath(year, month, filename);
+      await logInfo('CaptureScreen', 'OneDrive path built', { onedrivePath });
 
       // Save to database
+      await logInfo('CaptureScreen', 'Saving to database');
       await saveReceipt({
         filename,
         filePath,
@@ -128,9 +143,12 @@ const CaptureScreen = ({ onBack }) => {
         year,
         month,
       });
+      await logInfo('CaptureScreen', 'Database save successful');
 
       // Add to upload queue (background processing)
+      await logInfo('CaptureScreen', 'Adding to upload queue');
       await addToQueue(filePath, onedrivePath);
+      await logInfo('CaptureScreen', 'Added to queue successfully');
 
       // Show success message
       const saveLocation = galleryPath 
@@ -152,8 +170,14 @@ const CaptureScreen = ({ onBack }) => {
         onBack();
       }, 800);
     } catch (error) {
+      await logError('CaptureScreen', error, 'Failed to process receipt', { 
+        paymentMethod, 
+        cardName,
+        hasImage: !!capturedImage,
+        imageSize: capturedImage?.base64?.length 
+      });
       setProcessing(false);
-      Alert.alert('Error', 'Failed to save receipt: ' + error.message);
+      Alert.alert('Error', 'Failed to save receipt: ' + error.message + '\n\nCheck logs for details.');
     }
   };
 
