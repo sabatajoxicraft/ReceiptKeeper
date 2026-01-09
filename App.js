@@ -6,6 +6,7 @@ import {
   View,
   Text,
   ActivityIndicator,
+  AppState,
 } from 'react-native';
 import { initDatabase, getSetting } from './src/database/database';
 import SetupScreen from './src/screens/SetupScreen';
@@ -13,6 +14,7 @@ import MainScreen from './src/screens/MainScreen';
 import CaptureScreen from './src/screens/CaptureScreen';
 import Toast from 'react-native-toast-message';
 import { APP_COLORS } from './src/config/constants';
+import { processQueue } from './src/services/uploadQueueService';
 
 const App = () => {
   const [isLoading, setIsLoading] = useState(true);
@@ -21,6 +23,23 @@ const App = () => {
 
   useEffect(() => {
     initialize();
+    
+    // Start periodic queue processing
+    const queueInterval = setInterval(() => {
+      processQueue().catch(console.error);
+    }, 30000); // Every 30 seconds
+    
+    // Process queue when app comes to foreground
+    const subscription = AppState.addEventListener('change', (nextAppState) => {
+      if (nextAppState === 'active') {
+        processQueue().catch(console.error);
+      }
+    });
+    
+    return () => {
+      clearInterval(queueInterval);
+      subscription.remove();
+    };
   }, []);
 
   const initialize = async () => {

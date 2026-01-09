@@ -10,6 +10,7 @@ import {
 } from 'react-native';
 import { getReceipts } from '../database/database';
 import { APP_COLORS } from '../config/constants';
+import SyncStatusBar from '../components/SyncStatusBar';
 
 const MainScreen = ({ onCapture, onSettings }) => {
   const [receipts, setReceipts] = useState([]);
@@ -90,6 +91,9 @@ const MainScreen = ({ onCapture, onSettings }) => {
           <Text style={styles.statLabel}>This Month</Text>
         </View>
       </View>
+
+      {/* Sync Status Bar */}
+      <SyncStatusBar />
 
       <TouchableOpacity style={styles.captureButton} onPress={onCapture}>
         <Text style={styles.captureButtonText}>📸 Capture Receipt</Text>

@@ -16,7 +16,8 @@ import { getSetting } from '../database/database';
 import { APP_COLORS, PAYMENT_METHODS } from '../config/constants';
 import { saveImageToLocal } from '../utils/fileUtils';
 import { saveReceipt } from '../database/database';
-import { uploadToOneDrive, buildOneDrivePath } from '../services/onedriveService';
+import { buildOneDrivePath } from '../services/onedriveService';
+import { addToQueue } from '../services/uploadQueueService';
 import Toast from 'react-native-toast-message';
 
 const CaptureScreen = ({ onBack }) => {
@@ -128,26 +129,20 @@ const CaptureScreen = ({ onBack }) => {
         month,
       });
 
-      // Upload to OneDrive (async, don't wait)
-      uploadToOneDrive(filePath, onedrivePath)
-        .then(() => {
-          console.log('Uploaded to OneDrive successfully');
-        })
-        .catch((error) => {
-          console.log('OneDrive upload queued for later:', error.message);
-        });
+      // Add to upload queue (background processing)
+      await addToQueue(filePath, onedrivePath);
 
       // Show success message
       const saveLocation = galleryPath 
-        ? '📱 Saved to gallery\n☁️ Synced to OneDrive'
-        : `☁️ ${onedrivePath}`;
+        ? '📱 Gallery\n💾 Queued for OneDrive'
+        : `💾 Queued for OneDrive`;
       
       Toast.show({
         type: 'success',
         text1: '✅ Receipt Saved!',
         text2: saveLocation,
         position: 'top',
-        visibilityTime: 4000,
+        visibilityTime: 3000,
       });
 
       // Reset and go back
@@ -155,7 +150,7 @@ const CaptureScreen = ({ onBack }) => {
         setCapturedImage(null);
         setProcessing(false);
         onBack();
-      }, 1000);
+      }, 800);
     } catch (error) {
       setProcessing(false);
       Alert.alert('Error', 'Failed to save receipt: ' + error.message);
