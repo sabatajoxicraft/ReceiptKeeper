@@ -8,7 +8,7 @@ import {
   Alert,
 } from 'react-native';
 import { APP_COLORS } from '../config/constants';
-import { getAllReceipts } from '../database/database';
+import { getReceipts } from '../database/database';
 import {
   getQueueStats,
   addToQueue,
@@ -37,7 +37,7 @@ const SyncStatusBar = () => {
       console.log('=== MANUAL SYNC STARTED ===');
       
       // Step 1: Get all receipts from database
-      const receipts = await getAllReceipts();
+      const receipts = await getReceipts(1000); // Get up to 1000 receipts
       console.log('Found', receipts.length, 'receipts in database');
       
       // Step 2: Add each to queue
