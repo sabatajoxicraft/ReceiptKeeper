@@ -153,7 +153,6 @@ const SyncStatusBar = () => {
       </Modal>
     </>
   );
-  );
 };
 
 const styles = StyleSheet.create({
