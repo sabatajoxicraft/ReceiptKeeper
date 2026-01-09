@@ -4,27 +4,60 @@ import {
   Text,
   StyleSheet,
   TouchableOpacity,
-  FlatList,
+  SectionList,
   Alert,
   RefreshControl,
+  ActivityIndicator,
 } from 'react-native';
 import { getReceipts } from '../database/database';
+import { scanForMissingReceipts } from '../services/storageService';
 import { APP_COLORS } from '../config/constants';
 import SyncStatusBar from '../components/SyncStatusBar';
 
 const MainScreen = ({ onCapture, onSettings, onViewLogs }) => {
-  const [receipts, setReceipts] = useState([]);
+  const [sections, setSections] = useState([]);
   const [refreshing, setRefreshing] = useState(false);
   const [stats, setStats] = useState({ total: 0, thisMonth: 0 });
 
   useEffect(() => {
-    loadReceipts();
+    // Initial load and scan
+    handleInitialLoad();
   }, []);
+
+  const handleInitialLoad = async () => {
+    setRefreshing(true);
+    // 1. Scan for any files in storage that aren't in DB
+    await scanForMissingReceipts();
+    // 2. Load data from DB
+    await loadReceipts();
+    setRefreshing(false);
+  };
 
   const loadReceipts = async () => {
     try {
-      const data = await getReceipts(100);
-      setReceipts(data);
+      const data = await getReceipts(1000); // Increased limit to see history
+      
+      // Group by status
+      const pending = data.filter(r => r.upload_status !== 'success');
+      const synced = data.filter(r => r.upload_status === 'success');
+      
+      const newSections = [];
+      
+      if (pending.length > 0) {
+        newSections.push({
+          title: '☁️ Needs Sync',
+          data: pending,
+        });
+      }
+      
+      if (synced.length > 0) {
+        newSections.push({
+          title: '✅ Synced History',
+          data: synced,
+        });
+      }
+
+      setSections(newSections);
 
       // Calculate stats
       const now = new Date();
@@ -45,6 +78,7 @@ const MainScreen = ({ onCapture, onSettings, onViewLogs }) => {
 
   const onRefresh = async () => {
     setRefreshing(true);
+    await scanForMissingReceipts(); // Check storage again on refresh
     await loadReceipts();
     setRefreshing(false);
   };
@@ -105,22 +139,25 @@ const MainScreen = ({ onCapture, onSettings, onViewLogs }) => {
       </TouchableOpacity>
 
       <View style={styles.listContainer}>
-        <Text style={styles.listTitle}>Recent Receipts</Text>
-        {receipts.length === 0 ? (
+        {sections.length === 0 ? (
           <View style={styles.emptyState}>
-            <Text style={styles.emptyStateText}>No receipts yet</Text>
+            <Text style={styles.emptyStateText}>No receipts found</Text>
             <Text style={styles.emptyStateSubtext}>
               Tap the button above to capture your first receipt
             </Text>
           </View>
         ) : (
-          <FlatList
-            data={receipts}
+          <SectionList
+            sections={sections}
             renderItem={renderReceipt}
+            renderSectionHeader={({ section: { title } }) => (
+              <Text style={styles.sectionHeader}>{title}</Text>
+            )}
             keyExtractor={(item) => item.id.toString()}
             refreshControl={
               <RefreshControl refreshing={refreshing} onRefresh={onRefresh} />
             }
+            stickySectionHeadersEnabled={false}
           />
         )}
       </View>
@@ -204,6 +241,15 @@ const styles = StyleSheet.create({
     fontWeight: '600',
     marginBottom: 15,
     color: APP_COLORS.text,
+  },
+  sectionHeader: {
+    fontSize: 18,
+    fontWeight: 'bold',
+    backgroundColor: APP_COLORS.background,
+    color: APP_COLORS.primary,
+    paddingVertical: 10,
+    marginTop: 10,
+    marginBottom: 5,
   },
   receiptCard: {
     backgroundColor: APP_COLORS.surface,
