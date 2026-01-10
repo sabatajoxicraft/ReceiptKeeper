@@ -3,23 +3,48 @@ import {
   View,
   Text,
   StyleSheet,
-  Image,
+  ImageBackground,
   Dimensions,
   StatusBar,
+  Animated,
 } from 'react-native';
 
 const { width, height } = Dimensions.get('window');
 
 const SplashOverlay = ({ visible, onComplete }) => {
   const [show, setShow] = useState(visible);
+  const fadeAnim = new Animated.Value(0);
+  const scaleAnim = new Animated.Value(0.9);
 
   useEffect(() => {
     if (visible) {
-      // Auto-hide after 2.5 seconds
+      // Fade in animation
+      Animated.parallel([
+        Animated.timing(fadeAnim, {
+          toValue: 1,
+          duration: 600,
+          useNativeDriver: true,
+        }),
+        Animated.spring(scaleAnim, {
+          toValue: 1,
+          friction: 8,
+          tension: 40,
+          useNativeDriver: true,
+        }),
+      ]).start();
+
+      // Auto-hide after 3 seconds
       const timer = setTimeout(() => {
-        setShow(false);
-        onComplete?.();
-      }, 2500);
+        Animated.timing(fadeAnim, {
+          toValue: 0,
+          duration: 400,
+          useNativeDriver: true,
+        }).start(() => {
+          setShow(false);
+          onComplete?.();
+        });
+      }, 3000);
+      
       return () => clearTimeout(timer);
     }
   }, [visible, onComplete]);
@@ -27,25 +52,47 @@ const SplashOverlay = ({ visible, onComplete }) => {
   if (!show) return null;
 
   return (
-    <View style={styles.container}>
-      <StatusBar barStyle="light-content" backgroundColor="#0B3D2E" />
+    <Animated.View style={[styles.container, { opacity: fadeAnim }]}>
+      <StatusBar barStyle="light-content" backgroundColor="transparent" translucent />
       
-      {/* Logo */}
-      <View style={styles.logoContainer}>
-        <View style={styles.logoBox}>
-          <Text style={styles.logoText}>📄✓</Text>
+      {/* Logo and branding */}
+      <Animated.View 
+        style={[
+          styles.content,
+          { transform: [{ scale: scaleAnim }] }
+        ]}
+      >
+        {/* App Icon */}
+        <View style={styles.iconContainer}>
+          <View style={styles.iconBox}>
+            <Text style={styles.iconEmoji}>📄</Text>
+            <View style={styles.checkmarkBadge}>
+              <Text style={styles.checkmark}>✓</Text>
+            </View>
+          </View>
         </View>
-        <Text style={styles.appName}>ReceiptKeeper</Text>
-      </View>
 
-      {/* Slogan */}
-      <View style={styles.sloganContainer}>
-        <Text style={styles.sloganMain}>Every Receipt.</Text>
-        <Text style={styles.sloganMain}>Every Detail.</Text>
-        <Text style={styles.sloganMain}>Every Time.</Text>
-        <Text style={styles.sloganSub}>Track • Organize • Secure</Text>
-      </View>
-    </View>
+        {/* App Name */}
+        <Text style={styles.appName}>ReceiptKeeper</Text>
+
+        {/* Slogan */}
+        <View style={styles.sloganContainer}>
+          <Text style={styles.sloganLine}>Every Receipt.</Text>
+          <Text style={styles.sloganLine}>Every Detail.</Text>
+          <Text style={styles.sloganLine}>Every Time.</Text>
+        </View>
+
+        {/* Tagline */}
+        <View style={styles.taglineContainer}>
+          <View style={styles.divider} />
+          <Text style={styles.tagline}>Track • Organize • Secure</Text>
+          <View style={styles.divider} />
+        </View>
+      </Animated.View>
+
+      {/* Attribution */}
+      <Text style={styles.attribution}>Photo by Unsplash</Text>
+    </Animated.View>
   );
 };
 
@@ -56,56 +103,110 @@ const styles = StyleSheet.create({
     left: 0,
     width,
     height,
-    backgroundColor: 'rgba(11, 61, 46, 0.95)',
+    backgroundColor: 'rgba(0, 0, 0, 0.7)',
     justifyContent: 'center',
     alignItems: 'center',
     zIndex: 9999,
   },
-  logoContainer: {
+  content: {
     alignItems: 'center',
-    marginBottom: 60,
+    paddingHorizontal: 40,
   },
-  logoBox: {
-    width: 120,
-    height: 120,
+  iconContainer: {
+    marginBottom: 24,
+  },
+  iconBox: {
+    width: 140,
+    height: 140,
     backgroundColor: '#FFFFFF',
-    borderRadius: 24,
+    borderRadius: 32,
     justifyContent: 'center',
     alignItems: 'center',
-    marginBottom: 16,
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 8 },
+    shadowOpacity: 0.4,
+    shadowRadius: 16,
+    elevation: 16,
+    position: 'relative',
+  },
+  iconEmoji: {
+    fontSize: 70,
+    marginTop: -8,
+  },
+  checkmarkBadge: {
+    position: 'absolute',
+    bottom: -8,
+    right: -8,
+    width: 48,
+    height: 48,
+    backgroundColor: '#22C55E',
+    borderRadius: 24,
+    borderWidth: 4,
+    borderColor: '#FFFFFF',
+    justifyContent: 'center',
+    alignItems: 'center',
     shadowColor: '#000',
     shadowOffset: { width: 0, height: 4 },
     shadowOpacity: 0.3,
     shadowRadius: 8,
     elevation: 8,
   },
-  logoText: {
-    fontSize: 56,
+  checkmark: {
+    fontSize: 28,
+    color: '#FFFFFF',
+    fontWeight: 'bold',
   },
   appName: {
-    fontSize: 32,
-    fontWeight: '700',
+    fontSize: 42,
+    fontWeight: '800',
     color: '#FFFFFF',
-    letterSpacing: 1,
+    letterSpacing: -1,
+    marginBottom: 32,
+    textShadowColor: 'rgba(0, 0, 0, 0.5)',
+    textShadowOffset: { width: 0, height: 2 },
+    textShadowRadius: 8,
   },
   sloganContainer: {
     alignItems: 'center',
-    paddingHorizontal: 40,
+    marginBottom: 24,
   },
-  sloganMain: {
-    fontSize: 20,
-    fontWeight: '600',
+  sloganLine: {
+    fontSize: 24,
+    fontWeight: '700',
     color: '#FFFFFF',
-    marginBottom: 4,
+    marginBottom: 6,
     textAlign: 'center',
+    textShadowColor: 'rgba(0, 0, 0, 0.5)',
+    textShadowOffset: { width: 0, height: 2 },
+    textShadowRadius: 6,
   },
-  sloganSub: {
+  taglineContainer: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    marginTop: 8,
+  },
+  divider: {
+    width: 40,
+    height: 1,
+    backgroundColor: 'rgba(255, 255, 255, 0.4)',
+    marginHorizontal: 12,
+  },
+  tagline: {
     fontSize: 14,
-    fontWeight: '400',
+    fontWeight: '500',
     color: '#B2DFDB',
-    marginTop: 12,
-    letterSpacing: 2,
-    textAlign: 'center',
+    letterSpacing: 3,
+    textTransform: 'uppercase',
+    textShadowColor: 'rgba(0, 0, 0, 0.5)',
+    textShadowOffset: { width: 0, height: 1 },
+    textShadowRadius: 4,
+  },
+  attribution: {
+    position: 'absolute',
+    bottom: 24,
+    fontSize: 10,
+    color: 'rgba(255, 255, 255, 0.5)',
+    letterSpacing: 1,
   },
 });
 
