@@ -1,18 +1,21 @@
 <?xml version="1.0" encoding="utf-8"?>
 <layer-list xmlns:android="http://schemas.android.com/apk/res/android">
-    <!-- Professional gradient background -->
+    <!-- Unsplash receipt paper background -->
+    <item>
+        <bitmap
+            android:src="@drawable/splash_background"
+            android:gravity="center"
+            android:scaleType="centerCrop" />
+    </item>
+    
+    <!-- Dark overlay for better logo/text visibility -->
     <item>
         <shape android:shape="rectangle">
-            <gradient
-                android:angle="135"
-                android:startColor="#0B3D2E"
-                android:centerColor="#1B5E20"
-                android:endColor="#2E7D32"
-                android:type="linear" />
+            <solid android:color="#80000000" />
         </shape>
     </item>
     
-    <!-- Logo centered with proper sizing -->
+    <!-- Logo centered -->
     <item android:gravity="center">
         <bitmap
             android:src="@drawable/ic_splash_logo"

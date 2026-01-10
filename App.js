@@ -13,12 +13,14 @@ import SetupScreen from './src/screens/SetupScreen';
 import MainScreen from './src/screens/MainScreen';
 import CaptureScreen from './src/screens/CaptureScreen';
 import LogViewerScreen from './src/screens/LogViewerScreen';
+import SplashOverlay from './src/components/SplashOverlay';
 import Toast from 'react-native-toast-message';
 import { APP_COLORS } from './src/config/constants';
 import { processQueue } from './src/services/uploadQueueService';
 
 const App = () => {
   const [isLoading, setIsLoading] = useState(true);
+  const [showSplash, setShowSplash] = useState(true);
   const [setupCompleted, setSetupCompleted] = useState(false);
   const [currentScreen, setCurrentScreen] = useState('main');
 
@@ -106,6 +108,10 @@ const App = () => {
           />
         )}
       </SafeAreaView>
+      <SplashOverlay 
+        visible={showSplash} 
+        onComplete={() => setShowSplash(false)} 
+      />
       <Toast />
     </>
   );
