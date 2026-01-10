@@ -1,0 +1,35 @@
+<vector xmlns:android="http://schemas.android.com/apk/res/android"
+    android:width="108dp"
+    android:height="108dp"
+    android:viewportWidth="108"
+    android:viewportHeight="108">
+
+    <!-- Modern brand mark: receipt + check on deep-green tile (original artwork) -->
+    <path
+        android:fillColor="#0B3D2E"
+        android:pathData="M28,10h52c9.9,0 18,8.1 18,18v52c0,9.9 -8.1,18 -18,18H28c-9.9,0 -18,-8.1 -18,-18V28c0,-9.9 8.1,-18 18,-18z"/>
+
+    <!-- Receipt paper -->
+    <path
+        android:fillColor="#FFFFFF"
+        android:pathData="M35,26h38c3.3,0 6,2.7 6,6v36c0,3.3 -2.7,6 -6,6H35c-3.3,0 -6,-2.7 -6,-6V32c0,-3.3 2.7,-6 6,-6z"/>
+
+    <!-- Receipt lines -->
+    <path
+        android:strokeColor="#D0D5DD"
+        android:strokeWidth="2"
+        android:strokeLineCap="round"
+        android:pathData="M38,36h30M38,46h24M38,56h28"/>
+
+    <!-- Check badge -->
+    <path
+        android:fillColor="#22C55E"
+        android:pathData="M74,74m-14,0a14,14 0,1 1,28 0a14,14 0,1 1,-28 0"/>
+
+    <path
+        android:strokeColor="#FFFFFF"
+        android:strokeWidth="4"
+        android:strokeLineCap="round"
+        android:strokeLineJoin="round"
+        android:pathData="M67,74l5,5l11,-12"/>
+</vector>
