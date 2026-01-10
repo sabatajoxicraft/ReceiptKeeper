@@ -13,7 +13,7 @@ import {
 import DocumentPicker from 'react-native-document-picker';
 import { getSetting, saveSetting } from '../database/database';
 import { DEFAULT_CARDS, APP_COLORS } from '../config/constants';
-import { getCardType, formatCardLabel } from '../utils/cardUtils';
+import { getCardType, formatMaskedPan } from '../utils/cardUtils';
 import {
   authenticateOneDrive,
   isAuthenticated,
@@ -24,6 +24,7 @@ import {
   getOneDriveBasePath,
 } from '../services/onedriveService';
 import OneDriveFolderBrowser from '../components/OneDriveFolderBrowser';
+import CardBadge from '../components/CardBadge';
 
 const SetupScreen = ({ onSetupComplete }) => {
   const [cards, setCards] = useState(DEFAULT_CARDS);
@@ -37,6 +38,9 @@ const SetupScreen = ({ onSetupComplete }) => {
   const [showFolderBrowser, setShowFolderBrowser] = useState(false);
   
   // New Card State
+  const [newCardName, setNewCardName] = useState('');
+  const [newCardCategory, setNewCardCategory] = useState('personal'); // personal | business
+  const [newCardKind, setNewCardKind] = useState('physical'); // physical | virtual
   const [newCardFirst, setNewCardFirst] = useState('');
   const [newCardLast, setNewCardLast] = useState('');
 
@@ -154,23 +158,54 @@ const SetupScreen = ({ onSetupComplete }) => {
     }
   };
 
+  const pickAccountCategory = () => {
+    Alert.alert('Account Category', 'Choose one', [
+      { text: 'Personal', onPress: () => setNewCardCategory('personal') },
+      { text: 'Business', onPress: () => setNewCardCategory('business') },
+      { text: 'Cancel', style: 'cancel' },
+    ]);
+  };
+
+  const pickCardKind = () => {
+    Alert.alert('Card Type', 'Choose one', [
+      { text: 'Physical', onPress: () => setNewCardKind('physical') },
+      { text: 'Virtual', onPress: () => setNewCardKind('virtual') },
+      { text: 'Cancel', style: 'cancel' },
+    ]);
+  };
+
   const handleAddCard = () => {
-    if (!newCardFirst || newCardFirst.length !== 1 || !newCardLast || newCardLast.length !== 4) {
-      Alert.alert('Invalid Input', 'Please enter the first digit and the last 4 digits.');
+    const friendlyName = (newCardName || '').trim();
+
+    if (!friendlyName) {
+      Alert.alert('Missing Name', 'Please enter a friendly name (e.g., "FNB Cheque", "Capitec Business").');
       return;
     }
 
-    const { color, type } = getCardType(newCardFirst);
+    if (!newCardFirst || newCardFirst.length !== 1 || !newCardLast || newCardLast.length !== 4) {
+      Alert.alert('Invalid Digits', 'Please enter the first digit and the last 4 digits.');
+      return;
+    }
+
+    const cardType = getCardType(newCardFirst);
+    const masked = formatMaskedPan(newCardFirst, newCardLast);
+
     const newCard = {
       id: Date.now().toString(),
+      friendlyName,
+      accountCategory: newCardCategory,
+      cardKind: newCardKind,
       firstDigit: newCardFirst,
       lastFour: newCardLast,
-      name: `${type} ${newCardFirst}********${newCardLast}`,
-      color: color,
-      type: type
+      name: `${friendlyName} • ${masked}`,
+      color: cardType.color,
+      type: cardType.type,
     };
 
     setCards([...cards, newCard]);
+    setNewCardName('');
+    setNewCardCategory('personal');
+    setNewCardKind('physical');
     setNewCardFirst('');
     setNewCardLast('');
   };
@@ -391,9 +426,14 @@ const SetupScreen = ({ onSetupComplete }) => {
         {/* Existing Cards List */}
         {cards.map((card) => (
           <View key={card.id} style={styles.cardItem}>
-            <View style={[styles.colorDot, { backgroundColor: card.color }]} />
-            <Text style={styles.cardNameText}>{card.name}</Text>
-            <TouchableOpacity 
+            <CardBadge firstDigit={card.firstDigit} size="sm" />
+            <View style={styles.cardTextCol}>
+              <Text style={styles.cardNameText}>{card.name}</Text>
+              <Text style={styles.cardMetaText}>
+                {(card.accountCategory || 'personal').toUpperCase()} • {(card.cardKind || 'physical').toUpperCase()}
+              </Text>
+            </View>
+            <TouchableOpacity
               onPress={() => handleDeleteCard(card.id)}
               style={styles.deleteCardButton}>
               <Text style={styles.deleteCardText}>🗑️</Text>
@@ -404,6 +444,29 @@ const SetupScreen = ({ onSetupComplete }) => {
         {/* Add New Card Form */}
         <View style={styles.addCardContainer}>
           <Text style={styles.addCardLabel}>Add New:</Text>
+
+          <TextInput
+            style={styles.input}
+            value={newCardName}
+            onChangeText={setNewCardName}
+            placeholder="Friendly name (e.g., FNB Cheque, Capitec Business)"
+            placeholderTextColor={APP_COLORS.textSecondary}
+            autoCapitalize="words"
+          />
+
+          <View style={styles.dropdownRow}>
+            <TouchableOpacity style={styles.dropdownButton} onPress={pickAccountCategory}>
+              <Text style={styles.dropdownText}>
+                {(newCardCategory || 'personal').toUpperCase()}
+              </Text>
+            </TouchableOpacity>
+            <TouchableOpacity style={styles.dropdownButton} onPress={pickCardKind}>
+              <Text style={styles.dropdownText}>
+                {(newCardKind || 'physical').toUpperCase()}
+              </Text>
+            </TouchableOpacity>
+          </View>
+
           <View style={styles.cardFormRow}>
             <TextInput
               style={[styles.input, styles.shortInput]}
@@ -422,13 +485,13 @@ const SetupScreen = ({ onSetupComplete }) => {
               keyboardType="numeric"
               placeholderTextColor={APP_COLORS.textSecondary}
             />
-            <TouchableOpacity 
+            <TouchableOpacity
               style={[
-                styles.addCardButton, 
-                (!newCardFirst || !newCardLast) && styles.disabledButton
-              ]} 
+                styles.addCardButton,
+                (!newCardName || !newCardFirst || !newCardLast) && styles.disabledButton,
+              ]}
               onPress={handleAddCard}
-              disabled={!newCardFirst || !newCardLast}
+              disabled={!newCardName || !newCardFirst || !newCardLast}
             >
               <Text style={styles.addCardButtonText}>Add</Text>
             </TouchableOpacity>
@@ -577,12 +640,20 @@ const styles = StyleSheet.create({
     marginBottom: 10,
     borderWidth: 1,
     borderColor: APP_COLORS.border,
+    gap: 10,
+  },
+  cardTextCol: {
+    flex: 1,
   },
   cardNameText: {
-    flex: 1,
     fontSize: 16,
     color: APP_COLORS.text,
     fontFamily: 'monospace',
+  },
+  cardMetaText: {
+    marginTop: 4,
+    fontSize: 12,
+    color: APP_COLORS.textSecondary,
   },
   deleteCardButton: {
     padding: 5,
@@ -603,6 +674,25 @@ const styles = StyleSheet.create({
     fontSize: 14,
     color: APP_COLORS.textSecondary,
     marginBottom: 10,
+  },
+  dropdownRow: {
+    flexDirection: 'row',
+    gap: 10,
+    marginTop: 10,
+    marginBottom: 10,
+  },
+  dropdownButton: {
+    flex: 1,
+    backgroundColor: APP_COLORS.background,
+    borderWidth: 1,
+    borderColor: APP_COLORS.border,
+    borderRadius: 10,
+    paddingVertical: 12,
+    alignItems: 'center',
+  },
+  dropdownText: {
+    color: APP_COLORS.text,
+    fontWeight: '700',
   },
   cardFormRow: {
     flexDirection: 'row',

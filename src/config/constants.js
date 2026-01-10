@@ -4,21 +4,27 @@ export const PAYMENT_METHODS = {
 };
 
 export const DEFAULT_CARDS = [
-  { 
-    id: 'card1', 
-    name: 'Visa 4********1234', 
-    color: '#1A1F71', 
-    firstDigit: '4', 
+  {
+    id: 'card1',
+    name: 'Personal Cheque • 4********1234',
+    friendlyName: 'Personal Cheque',
+    accountCategory: 'personal',
+    cardKind: 'physical',
+    color: '#1A1F71',
+    firstDigit: '4',
     lastFour: '1234',
-    type: 'Visa'
+    type: 'Visa',
   },
-  { 
-    id: 'card2', 
-    name: 'Mastercard 5********5678', 
-    color: '#EB001B', 
-    firstDigit: '5', 
+  {
+    id: 'card2',
+    name: 'Business Ops • 5********5678',
+    friendlyName: 'Business Ops',
+    accountCategory: 'business',
+    cardKind: 'virtual',
+    color: '#111111',
+    firstDigit: '5',
     lastFour: '5678',
-    type: 'Mastercard'
+    type: 'Mastercard',
   },
 ];
 

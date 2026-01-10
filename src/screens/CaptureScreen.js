@@ -16,7 +16,7 @@ import RNFS from 'react-native-fs';
 import { getSetting } from '../database/database';
 import { APP_COLORS, PAYMENT_METHODS } from '../config/constants';
 import { saveImageToLocal } from '../utils/fileUtils';
-import { getCardType } from '../utils/cardUtils';
+import CardBadge from '../components/CardBadge';
 import { saveReceipt } from '../database/database';
 import { buildOneDrivePath } from '../services/onedriveService';
 import Toast from 'react-native-toast-message';
@@ -230,17 +230,17 @@ const CaptureScreen = ({ onBack }) => {
               </TouchableOpacity>
 
               <View style={styles.cardButtons}>
-                {cards.map((card) => {
-                  const cardType = card.firstDigit ? getCardType(card.firstDigit) : { icon: '💳' };
-                  return (
-                    <TouchableOpacity
-                      key={card.id}
-                      style={[styles.cardButton, { borderColor: card.color }]}
-                      onPress={() => handleCard(card)}>
-                      <Text style={styles.paymentButtonText}>{cardType.icon} {card.name}</Text>
-                    </TouchableOpacity>
-                  );
-                })}
+                {cards.map((card) => (
+                  <TouchableOpacity
+                    key={card.id}
+                    style={[styles.cardButton, { borderColor: card.color }]}
+                    onPress={() => handleCard(card)}>
+                    <View style={styles.cardButtonRow}>
+                      <CardBadge firstDigit={card.firstDigit} size="sm" />
+                      <Text style={styles.paymentButtonText}>{card.name}</Text>
+                    </View>
+                  </TouchableOpacity>
+                ))}
               </View>
 
               <TouchableOpacity
@@ -340,9 +340,13 @@ const styles = StyleSheet.create({
     backgroundColor: APP_COLORS.surface,
     padding: 18,
     borderRadius: 12,
-    alignItems: 'center',
     marginBottom: 10,
     borderWidth: 2,
+  },
+  cardButtonRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 10,
   },
   paymentButtonText: {
     fontSize: 18,
