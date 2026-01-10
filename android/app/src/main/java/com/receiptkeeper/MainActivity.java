@@ -9,6 +9,13 @@ import com.facebook.react.defaults.DefaultReactActivityDelegate;
 public class MainActivity extends ReactActivity {
 
   @Override
+  protected void onCreate(Bundle savedInstanceState) {
+    // Ensure splash remains visible while RN loads
+    setTheme(R.style.AppTheme);
+    super.onCreate(savedInstanceState);
+  }
+
+  @Override
   protected String getMainComponentName() {
     return "ReceiptKeeper";
   }
