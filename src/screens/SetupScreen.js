@@ -13,6 +13,7 @@ import {
 import DocumentPicker from 'react-native-document-picker';
 import { getSetting, saveSetting } from '../database/database';
 import { DEFAULT_CARDS, APP_COLORS } from '../config/constants';
+import { getCardType, formatCardLabel } from '../utils/cardUtils';
 import {
   authenticateOneDrive,
   isAuthenticated,
@@ -34,6 +35,10 @@ const SetupScreen = ({ onSetupComplete }) => {
   const [userInfo, setUserInfo] = useState(null);
   const [authenticating, setAuthenticating] = useState(false);
   const [showFolderBrowser, setShowFolderBrowser] = useState(false);
+  
+  // New Card State
+  const [newCardFirst, setNewCardFirst] = useState('');
+  const [newCardLast, setNewCardLast] = useState('');
 
   useEffect(() => {
     loadSettings();
@@ -149,10 +154,42 @@ const SetupScreen = ({ onSetupComplete }) => {
     }
   };
 
-  const updateCardName = (index, name) => {
-    const newCards = [...cards];
-    newCards[index].name = name;
-    setCards(newCards);
+  const handleAddCard = () => {
+    if (!newCardFirst || newCardFirst.length !== 1 || !newCardLast || newCardLast.length !== 4) {
+      Alert.alert('Invalid Input', 'Please enter the first digit and the last 4 digits.');
+      return;
+    }
+
+    const { color, type } = getCardType(newCardFirst);
+    const newCard = {
+      id: Date.now().toString(),
+      firstDigit: newCardFirst,
+      lastFour: newCardLast,
+      name: `${type} ${newCardFirst}********${newCardLast}`,
+      color: color,
+      type: type
+    };
+
+    setCards([...cards, newCard]);
+    setNewCardFirst('');
+    setNewCardLast('');
+  };
+
+  const handleDeleteCard = (id) => {
+    Alert.alert(
+      'Delete Card',
+      'Are you sure? This will not affect past receipts.',
+      [
+        { text: 'Cancel', style: 'cancel' },
+        { 
+          text: 'Delete', 
+          style: 'destructive',
+          onPress: () => {
+            setCards(cards.filter(c => c.id !== id));
+          }
+        }
+      ]
+    );
   };
 
   const handleBrowseReceiptsFolder = async () => {
@@ -349,19 +386,54 @@ const SetupScreen = ({ onSetupComplete }) => {
       {/* Payment Cards Section */}
       <View style={styles.section}>
         <Text style={styles.sectionTitle}>💳 Payment Cards</Text>
-        <Text style={styles.hint}>Customize your card names for quick selection</Text>
-        {cards.map((card, index) => (
-          <View key={card.id} style={styles.cardInput}>
+        <Text style={styles.hint}>Manage your cards for quick selection</Text>
+        
+        {/* Existing Cards List */}
+        {cards.map((card) => (
+          <View key={card.id} style={styles.cardItem}>
             <View style={[styles.colorDot, { backgroundColor: card.color }]} />
-            <TextInput
-              style={styles.input}
-              value={card.name}
-              onChangeText={(text) => updateCardName(index, text)}
-              placeholder={`Card ${index + 1}`}
-              placeholderTextColor={APP_COLORS.textSecondary}
-            />
+            <Text style={styles.cardNameText}>{card.name}</Text>
+            <TouchableOpacity 
+              onPress={() => handleDeleteCard(card.id)}
+              style={styles.deleteCardButton}>
+              <Text style={styles.deleteCardText}>🗑️</Text>
+            </TouchableOpacity>
           </View>
         ))}
+
+        {/* Add New Card Form */}
+        <View style={styles.addCardContainer}>
+          <Text style={styles.addCardLabel}>Add New:</Text>
+          <View style={styles.cardFormRow}>
+            <TextInput
+              style={[styles.input, styles.shortInput]}
+              value={newCardFirst}
+              onChangeText={(text) => setNewCardFirst(text.replace(/[^0-9]/g, '').slice(0, 1))}
+              placeholder="#"
+              keyboardType="numeric"
+              placeholderTextColor={APP_COLORS.textSecondary}
+            />
+            <Text style={styles.asterisks}>********</Text>
+            <TextInput
+              style={[styles.input, styles.mediumInput]}
+              value={newCardLast}
+              onChangeText={(text) => setNewCardLast(text.replace(/[^0-9]/g, '').slice(0, 4))}
+              placeholder="1234"
+              keyboardType="numeric"
+              placeholderTextColor={APP_COLORS.textSecondary}
+            />
+            <TouchableOpacity 
+              style={[
+                styles.addCardButton, 
+                (!newCardFirst || !newCardLast) && styles.disabledButton
+              ]} 
+              onPress={handleAddCard}
+              disabled={!newCardFirst || !newCardLast}
+            >
+              <Text style={styles.addCardButtonText}>Add</Text>
+            </TouchableOpacity>
+          </View>
+        </View>
       </View>
 
       {/* Info Section */}
@@ -496,10 +568,74 @@ const styles = StyleSheet.create({
     marginTop: 5,
     marginBottom: 10,
   },
-  cardInput: {
+  cardItem: {
     flexDirection: 'row',
     alignItems: 'center',
+    backgroundColor: APP_COLORS.surface,
+    padding: 15,
+    borderRadius: 10,
     marginBottom: 10,
+    borderWidth: 1,
+    borderColor: APP_COLORS.border,
+  },
+  cardNameText: {
+    flex: 1,
+    fontSize: 16,
+    color: APP_COLORS.text,
+    fontFamily: 'monospace',
+  },
+  deleteCardButton: {
+    padding: 5,
+  },
+  deleteCardText: {
+    fontSize: 18,
+  },
+  addCardContainer: {
+    marginTop: 10,
+    padding: 15,
+    backgroundColor: APP_COLORS.surface,
+    borderRadius: 10,
+    borderStyle: 'dashed',
+    borderWidth: 1,
+    borderColor: APP_COLORS.textSecondary,
+  },
+  addCardLabel: {
+    fontSize: 14,
+    color: APP_COLORS.textSecondary,
+    marginBottom: 10,
+  },
+  cardFormRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 8,
+  },
+  shortInput: {
+    width: 50,
+    textAlign: 'center',
+  },
+  mediumInput: {
+    width: 80,
+    textAlign: 'center',
+  },
+  asterisks: {
+    fontSize: 18,
+    color: APP_COLORS.textSecondary,
+    letterSpacing: 2,
+  },
+  addCardButton: {
+    backgroundColor: APP_COLORS.success,
+    paddingVertical: 12,
+    paddingHorizontal: 20,
+    borderRadius: 8,
+    marginLeft: 'auto',
+  },
+  disabledButton: {
+    backgroundColor: APP_COLORS.textSecondary,
+    opacity: 0.5,
+  },
+  addCardButtonText: {
+    color: '#FFFFFF',
+    fontWeight: '600',
   },
   colorDot: {
     width: 20,

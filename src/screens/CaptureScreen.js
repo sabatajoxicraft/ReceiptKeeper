@@ -16,6 +16,7 @@ import RNFS from 'react-native-fs';
 import { getSetting } from '../database/database';
 import { APP_COLORS, PAYMENT_METHODS } from '../config/constants';
 import { saveImageToLocal } from '../utils/fileUtils';
+import { getCardType } from '../utils/cardUtils';
 import { saveReceipt } from '../database/database';
 import { buildOneDrivePath } from '../services/onedriveService';
 import Toast from 'react-native-toast-message';
@@ -229,14 +230,17 @@ const CaptureScreen = ({ onBack }) => {
               </TouchableOpacity>
 
               <View style={styles.cardButtons}>
-                {cards.map((card) => (
-                  <TouchableOpacity
-                    key={card.id}
-                    style={[styles.cardButton, { borderColor: card.color }]}
-                    onPress={() => handleCard(card)}>
-                    <Text style={styles.paymentButtonText}>💳 {card.name}</Text>
-                  </TouchableOpacity>
-                ))}
+                {cards.map((card) => {
+                  const cardType = card.firstDigit ? getCardType(card.firstDigit) : { icon: '💳' };
+                  return (
+                    <TouchableOpacity
+                      key={card.id}
+                      style={[styles.cardButton, { borderColor: card.color }]}
+                      onPress={() => handleCard(card)}>
+                      <Text style={styles.paymentButtonText}>{cardType.icon} {card.name}</Text>
+                    </TouchableOpacity>
+                  );
+                })}
               </View>
 
               <TouchableOpacity

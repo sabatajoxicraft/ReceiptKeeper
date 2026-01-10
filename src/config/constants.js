@@ -4,9 +4,22 @@ export const PAYMENT_METHODS = {
 };
 
 export const DEFAULT_CARDS = [
-  { id: 'card1', name: 'Business Card', color: '#2E7D32' },
-  { id: 'card2', name: 'Personal Card', color: '#1976D2' },
-  { id: 'card3', name: 'Credit Card', color: '#F57C00' },
+  { 
+    id: 'card1', 
+    name: 'Visa 4********1234', 
+    color: '#1A1F71', 
+    firstDigit: '4', 
+    lastFour: '1234',
+    type: 'Visa'
+  },
+  { 
+    id: 'card2', 
+    name: 'Mastercard 5********5678', 
+    color: '#EB001B', 
+    firstDigit: '5', 
+    lastFour: '5678',
+    type: 'Mastercard'
+  },
 ];
 
 export const UPLOAD_STATUS = {
