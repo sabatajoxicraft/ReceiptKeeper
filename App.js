@@ -8,7 +8,6 @@ import {
   ActivityIndicator,
   AppState,
 } from 'react-native';
-import SplashScreen from 'react-native-splash-screen';
 import { initDatabase, getSetting } from './src/database/database';
 import SetupScreen from './src/screens/SetupScreen';
 import MainScreen from './src/screens/MainScreen';
@@ -53,10 +52,6 @@ const App = () => {
       console.error('Initialization error:', error);
     } finally {
       setIsLoading(false);
-      // Hide native splash screen once React Native is ready
-      setTimeout(() => {
-        SplashScreen.hide();
-      }, 100);
     }
   };
 
