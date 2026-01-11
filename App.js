@@ -18,6 +18,10 @@ import Toast from 'react-native-toast-message';
 import { APP_COLORS } from './src/config/constants';
 import { processQueue } from './src/services/uploadQueueService';
 
+// Minimum time to show splash screen (in milliseconds)
+// Adjust this value to control how long the splash is visible
+const MINIMUM_SPLASH_DURATION_MS = 2500;
+
 const App = () => {
   const [isLoading, setIsLoading] = useState(true);
   const [setupCompleted, setSetupCompleted] = useState(false);
@@ -45,6 +49,7 @@ const App = () => {
   }, []);
 
   const initialize = async () => {
+    const splashStart = Date.now();
     try {
       await initDatabase();
       const setupStatus = await getSetting('setup_completed');
@@ -52,8 +57,12 @@ const App = () => {
     } catch (error) {
       console.error('Initialization error:', error);
     } finally {
+      // Ensure splash shows for minimum duration
+      const elapsed = Date.now() - splashStart;
+      const remainingTime = Math.max(0, MINIMUM_SPLASH_DURATION_MS - elapsed);
+      
+      await new Promise(resolve => setTimeout(resolve, remainingTime));
       setIsLoading(false);
-      // Hide splash screen after initialization
       await RNBootSplash.hide({ fade: true, duration: 300 });
     }
   };
