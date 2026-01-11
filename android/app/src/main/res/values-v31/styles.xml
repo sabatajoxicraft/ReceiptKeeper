@@ -1,8 +1,8 @@
 <resources>
-    <!-- Keep v31 compatible even when compileSdk < 31 by avoiding Android 12-only splash APIs. -->
+    <!-- Android 12+ splash theme using bootsplash resources -->
     <style name="AppTheme.Splash" parent="AppTheme">
-        <item name="android:windowBackground">@drawable/splash_screen</item>
-        <item name="android:statusBarColor">@color/splashBackground</item>
-        <item name="android:navigationBarColor">@color/splashBackground</item>
+        <item name="android:windowBackground">@color/bootsplash_background</item>
+        <item name="android:statusBarColor">@color/bootsplash_background</item>
+        <item name="android:navigationBarColor">@color/bootsplash_background</item>
     </style>
 </resources>
