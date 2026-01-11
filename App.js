@@ -54,9 +54,9 @@ const App = () => {
     } catch (error) {
       console.error('Initialization error:', error);
     } finally {
+      // Hide native splash quickly - animated splash takes over
+      await RNBootSplash.hide({ fade: true, duration: 100 });
       setIsLoading(false);
-      // Hide native splash immediately to show animated splash
-      await RNBootSplash.hide({ fade: true, duration: 200 });
     }
   };
 
