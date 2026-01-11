@@ -22,12 +22,11 @@ const DocumentScannerScreen = ({ onCapture, onBack }) => {
   
   const camera = useRef(null);
   const device = useCameraDevice('back');
-  const scanLineAnim = useRef(new Animated.Value(0)).current;
-  const cornerPulseAnim = useRef(new Animated.Value(1)).current;
+  const edgePulseAnim = useRef(new Animated.Value(1)).current;
 
   useEffect(() => {
     checkCameraPermission();
-    startScanAnimation();
+    startEdgeAnimation();
     return () => setIsActive(false);
   }, []);
 
@@ -42,32 +41,17 @@ const DocumentScannerScreen = ({ onCapture, onBack }) => {
     }
   };
 
-  const startScanAnimation = () => {
+  const startEdgeAnimation = () => {
     Animated.loop(
       Animated.sequence([
-        Animated.timing(scanLineAnim, {
+        Animated.timing(edgePulseAnim, {
+          toValue: 1.05,
+          duration: 1200,
+          useNativeDriver: true,
+        }),
+        Animated.timing(edgePulseAnim, {
           toValue: 1,
-          duration: 2000,
-          useNativeDriver: true,
-        }),
-        Animated.timing(scanLineAnim, {
-          toValue: 0,
-          duration: 2000,
-          useNativeDriver: true,
-        }),
-      ])
-    ).start();
-
-    Animated.loop(
-      Animated.sequence([
-        Animated.timing(cornerPulseAnim, {
-          toValue: 1.2,
-          duration: 800,
-          useNativeDriver: true,
-        }),
-        Animated.timing(cornerPulseAnim, {
-          toValue: 1,
-          duration: 800,
+          duration: 1200,
           useNativeDriver: true,
         }),
       ])
@@ -127,15 +111,11 @@ const DocumentScannerScreen = ({ onCapture, onBack }) => {
     );
   }
 
-  const frameWidth = width * 0.8;
-  const frameHeight = height * 0.6;
+  const frameWidth = width * 0.85;
+  const frameHeight = height * 0.65;
   const frameLeft = (width - frameWidth) / 2;
   const frameTop = (height - frameHeight) / 2 - 50;
-
-  const scanLineTranslateY = scanLineAnim.interpolate({
-    inputRange: [0, 1],
-    outputRange: [0, frameHeight],
-  });
+  const lineLength = 60;
 
   return (
     <View style={styles.container}>
@@ -147,34 +127,31 @@ const DocumentScannerScreen = ({ onCapture, onBack }) => {
         photo={true}
       />
 
+      {/* Dark overlay */}
       <View style={StyleSheet.absoluteFill}>
         <View style={[styles.overlay, { height: frameTop }]} />
         
         <View style={{ flexDirection: 'row', height: frameHeight }}>
           <View style={[styles.overlay, { width: frameLeft }]} />
           <View style={{ width: frameWidth, height: frameHeight }}>
+            {/* Corner edge lines only - 4 corners */}
             <View style={styles.frameContainer}>
-              <Animated.View style={[styles.corner, styles.cornerTopLeft, { transform: [{ scale: cornerPulseAnim }] }]} />
-              <Animated.View style={[styles.corner, styles.cornerTopRight, { transform: [{ scale: cornerPulseAnim }] }]} />
-              <Animated.View style={[styles.corner, styles.cornerBottomLeft, { transform: [{ scale: cornerPulseAnim }] }]} />
-              <Animated.View style={[styles.corner, styles.cornerBottomRight, { transform: [{ scale: cornerPulseAnim }] }]} />
+              {/* Top-left corner */}
+              <Animated.View style={[styles.edgeLineHorizontal, { top: 0, left: 0, width: lineLength, transform: [{ scaleX: edgePulseAnim }] }]} />
+              <Animated.View style={[styles.edgeLineVertical, { top: 0, left: 0, height: lineLength, transform: [{ scaleY: edgePulseAnim }] }]} />
               
-              <View style={[styles.frameLine, styles.frameTop]} />
-              <View style={[styles.frameLine, styles.frameRight]} />
-              <View style={[styles.frameLine, styles.frameBottom]} />
-              <View style={[styles.frameLine, styles.frameLeft]} />
+              {/* Top-right corner */}
+              <Animated.View style={[styles.edgeLineHorizontal, { top: 0, right: 0, width: lineLength, transform: [{ scaleX: edgePulseAnim }] }]} />
+              <Animated.View style={[styles.edgeLineVertical, { top: 0, right: 0, height: lineLength, transform: [{ scaleY: edgePulseAnim }] }]} />
+              
+              {/* Bottom-left corner */}
+              <Animated.View style={[styles.edgeLineHorizontal, { bottom: 0, left: 0, width: lineLength, transform: [{ scaleX: edgePulseAnim }] }]} />
+              <Animated.View style={[styles.edgeLineVertical, { bottom: 0, left: 0, height: lineLength, transform: [{ scaleY: edgePulseAnim }] }]} />
+              
+              {/* Bottom-right corner */}
+              <Animated.View style={[styles.edgeLineHorizontal, { bottom: 0, right: 0, width: lineLength, transform: [{ scaleX: edgePulseAnim }] }]} />
+              <Animated.View style={[styles.edgeLineVertical, { bottom: 0, right: 0, height: lineLength, transform: [{ scaleY: edgePulseAnim }] }]} />
             </View>
-            
-            {showGuide && (
-              <Animated.View
-                style={[
-                  styles.scanLine,
-                  {
-                    transform: [{ translateY: scanLineTranslateY }],
-                  },
-                ]}
-              />
-            )}
           </View>
           <View style={[styles.overlay, { flex: 1 }]} />
         </View>
@@ -229,71 +206,23 @@ const styles = StyleSheet.create({
     flex: 1,
     position: 'relative',
   },
-  frameLine: {
+  edgeLineHorizontal: {
     position: 'absolute',
+    height: 4,
     backgroundColor: '#00FF00',
+    shadowColor: '#00FF00',
+    shadowOffset: { width: 0, height: 0 },
+    shadowOpacity: 0.8,
+    shadowRadius: 6,
   },
-  frameTop: {
-    top: 0,
-    left: 0,
-    right: 0,
-    height: 3,
-  },
-  frameRight: {
-    top: 0,
-    right: 0,
-    bottom: 0,
-    width: 3,
-  },
-  frameBottom: {
-    bottom: 0,
-    left: 0,
-    right: 0,
-    height: 3,
-  },
-  frameLeft: {
-    top: 0,
-    left: 0,
-    bottom: 0,
-    width: 3,
-  },
-  corner: {
+  edgeLineVertical: {
     position: 'absolute',
-    width: 40,
-    height: 40,
-    borderColor: '#00FF00',
-    borderWidth: 6,
-  },
-  cornerTopLeft: {
-    top: -3,
-    left: -3,
-    borderRightWidth: 0,
-    borderBottomWidth: 0,
-  },
-  cornerTopRight: {
-    top: -3,
-    right: -3,
-    borderLeftWidth: 0,
-    borderBottomWidth: 0,
-  },
-  cornerBottomLeft: {
-    bottom: -3,
-    left: -3,
-    borderRightWidth: 0,
-    borderTopWidth: 0,
-  },
-  cornerBottomRight: {
-    bottom: -3,
-    right: -3,
-    borderLeftWidth: 0,
-    borderTopWidth: 0,
-  },
-  scanLine: {
-    position: 'absolute',
-    left: 0,
-    right: 0,
-    height: 2,
+    width: 4,
     backgroundColor: '#00FF00',
+    shadowColor: '#00FF00',
+    shadowOffset: { width: 0, height: 0 },
+    shadowOpacity: 0.8,
+    shadowRadius: 6,
   },
   topBar: {
     position: 'absolute',
