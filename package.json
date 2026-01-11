@@ -27,10 +27,14 @@
     "react-native-document-picker": "^9.3.1",
     "react-native-fs": "^2.20.0",
     "react-native-image-picker": "^7.2.3",
+    "react-native-reanimated": "^4.2.1",
     "react-native-sqlite-storage": "^6.0.1",
+    "react-native-svg": "^15.15.1",
     "react-native-toast-message": "^2.2.0",
     "react-native-vision-camera": "^3.9.0",
-    "rn-fetch-blob": "^0.12.0"
+    "react-native-worklets-core": "^1.6.2",
+    "rn-fetch-blob": "^0.12.0",
+    "vision-camera-dynamsoft-document-normalizer": "^4.1.0"
   },
   "devDependencies": {
     "@react-native-community/cli": "12.3.6",

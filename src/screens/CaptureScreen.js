@@ -20,11 +20,13 @@ import CardBadge from '../components/CardBadge';
 import { saveReceipt } from '../database/database';
 import { buildOneDrivePath } from '../services/onedriveService';
 import Toast from 'react-native-toast-message';
+import DocumentScannerScreen from './DocumentScannerScreen';
 
 const CaptureScreen = ({ onBack }) => {
   const [capturedImage, setCapturedImage] = useState(null);
   const [cards, setCards] = useState([]);
   const [processing, setProcessing] = useState(false);
+  const [showScanner, setShowScanner] = useState(false);
 
   useEffect(() => {
     loadCards();
@@ -192,11 +194,32 @@ const CaptureScreen = ({ onBack }) => {
     processReceipt(PAYMENT_METHODS.CARD, card.name);
   };
 
+  const handleScannerCapture = (data) => {
+    console.log('Scanner captured:', data);
+    // TODO: Process captured document with perspective correction
+    setShowScanner(false);
+    Alert.alert('Document Scanned', 'Processing captured document...');
+  };
+
+  // Show document scanner if requested
+  if (showScanner) {
+    return (
+      <DocumentScannerScreen
+        onCapture={handleScannerCapture}
+        onBack={() => setShowScanner(false)}
+      />
+    );
+  }
+
   return (
     <View style={styles.container}>
       {!capturedImage ? (
         <View style={styles.captureContainer}>
           <Text style={styles.title}>📸 Capture Receipt</Text>
+
+          <TouchableOpacity style={styles.scannerButton} onPress={() => setShowScanner(true)}>
+            <Text style={styles.scannerButtonText}>📄 Smart Document Scan</Text>
+          </TouchableOpacity>
 
           <TouchableOpacity style={styles.cameraButton} onPress={handleCapture}>
             <Text style={styles.cameraButtonText}>Take Photo</Text>
@@ -277,6 +300,21 @@ const styles = StyleSheet.create({
     marginBottom: 30,
     textAlign: 'center',
     color: APP_COLORS.text,
+  },
+  scannerButton: {
+    backgroundColor: '#00AA00',
+    padding: 20,
+    borderRadius: 15,
+    width: '80%',
+    alignItems: 'center',
+    marginBottom: 15,
+    borderWidth: 2,
+    borderColor: '#00FF00',
+  },
+  scannerButtonText: {
+    color: '#FFFFFF',
+    fontSize: 20,
+    fontWeight: '700',
   },
   cameraButton: {
     backgroundColor: APP_COLORS.primary,
