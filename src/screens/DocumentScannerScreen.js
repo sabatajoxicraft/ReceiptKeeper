@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useCallback } from 'react';
+import React, { useState, useEffect, useCallback, useRef } from 'react';
 import {
   View,
   Text,
@@ -6,41 +6,29 @@ import {
   TouchableOpacity,
   Alert,
   ActivityIndicator,
-  Platform,
+  Animated,
+  Dimensions,
 } from 'react-native';
-import { Camera, useCameraDevice, useFrameProcessor } from 'react-native-vision-camera';
-import { useSharedValue, withTiming, useAnimatedProps } from 'react-native-reanimated';
-import { Worklets } from 'react-native-worklets';
-import { detect } from 'vision-camera-dynamsoft-document-normalizer';
-import Svg, { Polygon, Line } from 'react-native-svg';
-import Animated from 'react-native-reanimated';
+import { Camera, useCameraDevice } from 'react-native-vision-camera';
+import Svg, { Rect, Line } from 'react-native-svg';
 import { APP_COLORS } from '../config/constants';
 
-const AnimatedPolygon = Animated.createAnimatedComponent(Polygon);
-const AnimatedLine = Animated.createAnimatedComponent(Line);
+const { width, height } = Dimensions.get('window');
 
 const DocumentScannerScreen = ({ onCapture, onBack }) => {
   const [hasPermission, setHasPermission] = useState(false);
   const [isActive, setIsActive] = useState(true);
-  const [detectedCorners, setDetectedCorners] = useState(null);
-  const [isDocumentDetected, setIsDocumentDetected] = useState(false);
   const [capturing, setCapturing] = useState(false);
-
+  const [showGuide, setShowGuide] = useState(true);
+  
+  const camera = useRef(null);
   const device = useCameraDevice('back');
-
-  // Shared values for smooth animation
-  const corner1X = useSharedValue(0);
-  const corner1Y = useSharedValue(0);
-  const corner2X = useSharedValue(0);
-  const corner2Y = useSharedValue(0);
-  const corner3X = useSharedValue(0);
-  const corner3Y = useSharedValue(0);
-  const corner4X = useSharedValue(0);
-  const corner4Y = useSharedValue(0);
-  const opacity = useSharedValue(0);
+  const scanLineAnim = useRef(new Animated.Value(0)).current;
+  const cornerPulseAnim = useRef(new Animated.Value(1)).current;
 
   useEffect(() => {
     checkCameraPermission();
+    startScanAnimation();
     return () => setIsActive(false);
   }, []);
 
@@ -55,78 +43,76 @@ const DocumentScannerScreen = ({ onCapture, onBack }) => {
     }
   };
 
-  // Worklet callback for updating corners from frame processor
-  const updateCorners = Worklets.createRunInJsFn((corners) => {
-    if (corners && corners.length === 4) {
-      // Animate corners smoothly
-      corner1X.value = withTiming(corners[0].x, { duration: 100 });
-      corner1Y.value = withTiming(corners[0].y, { duration: 100 });
-      corner2X.value = withTiming(corners[1].x, { duration: 100 });
-      corner2Y.value = withTiming(corners[1].y, { duration: 100 });
-      corner3X.value = withTiming(corners[2].x, { duration: 100 });
-      corner3Y.value = withTiming(corners[2].y, { duration: 100 });
-      corner4X.value = withTiming(corners[3].x, { duration: 100 });
-      corner4Y.value = withTiming(corners[3].y, { duration: 100 });
-      opacity.value = withTiming(1, { duration: 200 });
-      
-      setDetectedCorners(corners);
-      setIsDocumentDetected(true);
-    } else {
-      opacity.value = withTiming(0, { duration: 200 });
-      setIsDocumentDetected(false);
-    }
-  });
+  const startScanAnimation = () => {
+    // Animated scanning line that moves up and down
+    Animated.loop(
+      Animated.sequence([
+        Animated.timing(scanLineAnim, {
+          toValue: 1,
+          duration: 2000,
+          useNativeDriver: true,
+        }),
+        Animated.timing(scanLineAnim, {
+          toValue: 0,
+          duration: 2000,
+          useNativeDriver: true,
+        }),
+      ])
+    ).start();
 
-  const frameProcessor = useFrameProcessor((frame) => {
-    'worklet';
-    try {
-      const results = detect(frame);
-      if (results && results.length > 0) {
-        const quad = results[0].location;
-        const corners = [
-          { x: quad.points[0].x, y: quad.points[0].y },
-          { x: quad.points[1].x, y: quad.points[1].y },
-          { x: quad.points[2].x, y: quad.points[2].y },
-          { x: quad.points[3].x, y: quad.points[3].y },
-        ];
-        updateCorners(corners);
-      } else {
-        updateCorners(null);
-      }
-    } catch (error) {
-      console.error('Frame processor error:', error);
-    }
-  }, [updateCorners]);
-
-  // Animated props for polygon overlay
-  const animatedPolygonProps = useAnimatedProps(() => {
-    const points = `${corner1X.value},${corner1Y.value} ${corner2X.value},${corner2Y.value} ${corner3X.value},${corner3Y.value} ${corner4X.value},${corner4Y.value}`;
-    return {
-      points,
-      opacity: opacity.value,
-    };
-  });
+    // Pulsing corner markers
+    Animated.loop(
+      Animated.sequence([
+        Animated.timing(cornerPulseAnim, {
+          toValue: 1.2,
+          duration: 800,
+          useNativeDriver: true,
+        }),
+        Animated.timing(cornerPulseAnim, {
+          toValue: 1,
+          duration: 800,
+          useNativeDriver: true,
+        }),
+      ])
+    ).start();
+  };
 
   const handleCapture = useCallback(async () => {
-    if (!isDocumentDetected || capturing) return;
+    if (capturing || !camera.current) return;
 
     setCapturing(true);
+    setShowGuide(false);
+    
     try {
-      // TODO: Implement photo capture with perspective correction
-      // For now, just capture the frame
-      Alert.alert('Success', 'Document captured! (TODO: implement perspective correction)');
+      const photo = await camera.current.takePhoto({
+        qualityPrioritization: 'balanced',
+        flash: 'off',
+      });
       
-      // Call parent callback with corners for processing
-      if (onCapture && detectedCorners) {
-        onCapture({ corners: detectedCorners });
+      console.log('Photo captured:', photo.path);
+      
+      // Call parent callback with photo data
+      if (onCapture) {
+        onCapture({ 
+          uri: `file://${photo.path}`,
+          path: photo.path,
+          width: photo.width,
+          height: photo.height,
+        });
       }
+      
+      // Small delay before going back
+      setTimeout(() => {
+        onBack();
+      }, 500);
     } catch (error) {
       console.error('Capture error:', error);
-      Alert.alert('Error', 'Failed to capture document');
+      Alert.alert('Error', 'Failed to capture document: ' + error.message);
+      setShowGuide(true);
     } finally {
       setCapturing(false);
     }
-  }, [isDocumentDetected, capturing, detectedCorners, onCapture]);
+  }, [capturing, onCapture, onBack]);
 
   if (!hasPermission) {
     return (
@@ -148,32 +134,83 @@ const DocumentScannerScreen = ({ onCapture, onBack }) => {
     );
   }
 
+  // Document frame dimensions
+  const frameWidth = width * 0.8;
+  const frameHeight = height * 0.6;
+  const frameLeft = (width - frameWidth) / 2;
+  const frameTop = (height - frameHeight) / 2 - 50;
+
+  // Scanning line position
+  const scanLineY = scanLineAnim.interpolate({
+    inputRange: [0, 1],
+    outputRange: [frameTop, frameTop + frameHeight],
+  });
+
   return (
     <View style={styles.container}>
       <Camera
+        ref={camera}
         style={StyleSheet.absoluteFill}
         device={device}
         isActive={isActive}
-        frameProcessor={frameProcessor}
         photo={true}
       />
 
-      {/* Animated corner detection overlay */}
+      {/* Dark overlay with transparent frame */}
       <Svg style={StyleSheet.absoluteFill}>
-        <AnimatedPolygon
-          animatedProps={animatedPolygonProps}
-          stroke="#00FF00"
-          strokeWidth={3}
-          fill="rgba(0, 255, 0, 0.1)"
-        />
+        {/* Top overlay */}
+        <Rect x={0} y={0} width={width} height={frameTop} fill="rgba(0,0,0,0.6)" />
+        {/* Left overlay */}
+        <Rect x={0} y={frameTop} width={frameLeft} height={frameHeight} fill="rgba(0,0,0,0.6)" />
+        {/* Right overlay */}
+        <Rect x={frameLeft + frameWidth} y={frameTop} width={frameLeft} height={frameHeight} fill="rgba(0,0,0,0.6)" />
+        {/* Bottom overlay */}
+        <Rect x={0} y={frameTop + frameHeight} width={width} height={height - (frameTop + frameHeight)} fill="rgba(0,0,0,0.6)" />
+
+        {/* Frame border */}
+        <Line x1={frameLeft} y1={frameTop} x2={frameLeft + frameWidth} y2={frameTop} stroke="#00FF00" strokeWidth={3} />
+        <Line x1={frameLeft + frameWidth} y1={frameTop} x2={frameLeft + frameWidth} y2={frameTop + frameHeight} stroke="#00FF00" strokeWidth={3} />
+        <Line x1={frameLeft + frameWidth} y1={frameTop + frameHeight} x2={frameLeft} y2={frameTop + frameHeight} stroke="#00FF00" strokeWidth={3} />
+        <Line x1={frameLeft} y1={frameTop + frameHeight} x2={frameLeft} y2={frameTop} stroke="#00FF00" strokeWidth={3} />
+
+        {/* Corner markers */}
+        {/* Top-left */}
+        <Line x1={frameLeft} y1={frameTop} x2={frameLeft + 40} y2={frameTop} stroke="#00FF00" strokeWidth={6} />
+        <Line x1={frameLeft} y1={frameTop} x2={frameLeft} y2={frameTop + 40} stroke="#00FF00" strokeWidth={6} />
+        
+        {/* Top-right */}
+        <Line x1={frameLeft + frameWidth} y1={frameTop} x2={frameLeft + frameWidth - 40} y2={frameTop} stroke="#00FF00" strokeWidth={6} />
+        <Line x1={frameLeft + frameWidth} y1={frameTop} x2={frameLeft + frameWidth} y2={frameTop + 40} stroke="#00FF00" strokeWidth={6} />
+        
+        {/* Bottom-left */}
+        <Line x1={frameLeft} y1={frameTop + frameHeight} x2={frameLeft + 40} y2={frameTop + frameHeight} stroke="#00FF00" strokeWidth={6} />
+        <Line x1={frameLeft} y1={frameTop + frameHeight} x2={frameLeft} y2={frameTop + frameHeight - 40} stroke="#00FF00" strokeWidth={6} />
+        
+        {/* Bottom-right */}
+        <Line x1={frameLeft + frameWidth} y1={frameTop + frameHeight} x2={frameLeft + frameWidth - 40} y2={frameTop + frameHeight} stroke="#00FF00" strokeWidth={6} />
+        <Line x1={frameLeft + frameWidth} y1={frameTop + frameHeight} x2={frameLeft + frameWidth} y2={frameTop + frameHeight - 40} stroke="#00FF00" strokeWidth={6} />
       </Svg>
+
+      {/* Animated scanning line */}
+      {showGuide && (
+        <Animated.View
+          style={[
+            styles.scanLine,
+            {
+              transform: [{ translateY: scanLineY }],
+              left: frameLeft,
+              width: frameWidth,
+            },
+          ]}
+        />
+      )}
 
       {/* Top bar with instructions */}
       <View style={styles.topBar}>
         <Text style={styles.instructionText}>
-          {isDocumentDetected 
-            ? '✓ Document detected - Tap to capture' 
-            : 'Position document within frame'}
+          {showGuide 
+            ? '📄 Position document within frame' 
+            : 'Processing...'}
         </Text>
       </View>
 
@@ -186,11 +223,10 @@ const DocumentScannerScreen = ({ onCapture, onBack }) => {
         <TouchableOpacity
           style={[
             styles.captureButton,
-            isDocumentDetected && styles.captureButtonActive,
             capturing && styles.captureButtonDisabled,
           ]}
           onPress={handleCapture}
-          disabled={!isDocumentDetected || capturing}>
+          disabled={capturing}>
           {capturing ? (
             <ActivityIndicator size="large" color="#FFFFFF" />
           ) : (
@@ -199,11 +235,6 @@ const DocumentScannerScreen = ({ onCapture, onBack }) => {
         </TouchableOpacity>
 
         <View style={styles.placeholder} />
-      </View>
-
-      {/* Detection status indicator */}
-      <View style={[styles.statusIndicator, isDocumentDetected && styles.statusActive]}>
-        <View style={styles.statusDot} />
       </View>
     </View>
   );
@@ -216,6 +247,15 @@ const styles = StyleSheet.create({
     justifyContent: 'center',
     alignItems: 'center',
   },
+  scanLine: {
+    position: 'absolute',
+    height: 2,
+    backgroundColor: '#00FF00',
+    shadowColor: '#00FF00',
+    shadowOffset: { width: 0, height: 0 },
+    shadowOpacity: 0.8,
+    shadowRadius: 10,
+  },
   topBar: {
     position: 'absolute',
     top: 0,
@@ -223,7 +263,7 @@ const styles = StyleSheet.create({
     right: 0,
     padding: 20,
     paddingTop: 50,
-    backgroundColor: 'rgba(0, 0, 0, 0.6)',
+    backgroundColor: 'rgba(0, 0, 0, 0.7)',
   },
   instructionText: {
     color: '#FFFFFF',
@@ -255,14 +295,10 @@ const styles = StyleSheet.create({
     width: 70,
     height: 70,
     borderRadius: 35,
-    backgroundColor: 'rgba(255, 255, 255, 0.3)',
+    backgroundColor: APP_COLORS.primary,
     justifyContent: 'center',
     alignItems: 'center',
     borderWidth: 4,
-    borderColor: '#FFFFFF',
-  },
-  captureButtonActive: {
-    backgroundColor: APP_COLORS.primary,
     borderColor: '#00FF00',
   },
   captureButtonDisabled: {
@@ -276,26 +312,6 @@ const styles = StyleSheet.create({
   },
   placeholder: {
     width: 60,
-  },
-  statusIndicator: {
-    position: 'absolute',
-    top: 60,
-    right: 20,
-    width: 40,
-    height: 40,
-    borderRadius: 20,
-    backgroundColor: 'rgba(255, 255, 255, 0.2)',
-    justifyContent: 'center',
-    alignItems: 'center',
-  },
-  statusActive: {
-    backgroundColor: 'rgba(0, 255, 0, 0.3)',
-  },
-  statusDot: {
-    width: 12,
-    height: 12,
-    borderRadius: 6,
-    backgroundColor: '#FFFFFF',
   },
   errorText: {
     color: '#FFFFFF',
