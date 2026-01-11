@@ -27,6 +27,10 @@ allprojects {
             force "com.facebook.react:react-android:0.73.6"
             force "com.facebook.react:hermes-android:0.73.6"
         }
+        resolutionStrategy.dependencySubstitution {
+            // React Native 0.71+ renamed the artifact from react-native to react-android
+            substitute module("com.facebook.react:react-native") using module("com.facebook.react:react-android:0.73.6")
+        }
     }
 }
 
