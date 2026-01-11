@@ -10,7 +10,6 @@ import {
   Dimensions,
 } from 'react-native';
 import { Camera, useCameraDevice } from 'react-native-vision-camera';
-import Svg, { Rect, Line } from 'react-native-svg';
 import { APP_COLORS } from '../config/constants';
 
 const { width, height } = Dimensions.get('window');
@@ -44,7 +43,6 @@ const DocumentScannerScreen = ({ onCapture, onBack }) => {
   };
 
   const startScanAnimation = () => {
-    // Animated scanning line that moves up and down
     Animated.loop(
       Animated.sequence([
         Animated.timing(scanLineAnim, {
@@ -60,7 +58,6 @@ const DocumentScannerScreen = ({ onCapture, onBack }) => {
       ])
     ).start();
 
-    // Pulsing corner markers
     Animated.loop(
       Animated.sequence([
         Animated.timing(cornerPulseAnim, {
@@ -89,19 +86,15 @@ const DocumentScannerScreen = ({ onCapture, onBack }) => {
         flash: 'off',
       });
       
-      console.log('Photo captured:', photo.path);
-      
-      // Call parent callback with photo data
       if (onCapture) {
         onCapture({ 
-          uri: `file://${photo.path}`,
+          uri: \`file://\${photo.path}\`,
           path: photo.path,
           width: photo.width,
           height: photo.height,
         });
       }
       
-      // Small delay before going back
       setTimeout(() => {
         onBack();
       }, 500);
@@ -134,16 +127,14 @@ const DocumentScannerScreen = ({ onCapture, onBack }) => {
     );
   }
 
-  // Document frame dimensions
   const frameWidth = width * 0.8;
   const frameHeight = height * 0.6;
   const frameLeft = (width - frameWidth) / 2;
   const frameTop = (height - frameHeight) / 2 - 50;
 
-  // Scanning line position
-  const scanLineY = scanLineAnim.interpolate({
+  const scanLineTranslateY = scanLineAnim.interpolate({
     inputRange: [0, 1],
-    outputRange: [frameTop, frameTop + frameHeight],
+    outputRange: [0, frameHeight],
   });
 
   return (
@@ -156,56 +147,41 @@ const DocumentScannerScreen = ({ onCapture, onBack }) => {
         photo={true}
       />
 
-      {/* Dark overlay with transparent frame */}
-      <Svg style={StyleSheet.absoluteFill}>
-        {/* Top overlay */}
-        <Rect x={0} y={0} width={width} height={frameTop} fill="rgba(0,0,0,0.6)" />
-        {/* Left overlay */}
-        <Rect x={0} y={frameTop} width={frameLeft} height={frameHeight} fill="rgba(0,0,0,0.6)" />
-        {/* Right overlay */}
-        <Rect x={frameLeft + frameWidth} y={frameTop} width={frameLeft} height={frameHeight} fill="rgba(0,0,0,0.6)" />
-        {/* Bottom overlay */}
-        <Rect x={0} y={frameTop + frameHeight} width={width} height={height - (frameTop + frameHeight)} fill="rgba(0,0,0,0.6)" />
-
-        {/* Frame border */}
-        <Line x1={frameLeft} y1={frameTop} x2={frameLeft + frameWidth} y2={frameTop} stroke="#00FF00" strokeWidth={3} />
-        <Line x1={frameLeft + frameWidth} y1={frameTop} x2={frameLeft + frameWidth} y2={frameTop + frameHeight} stroke="#00FF00" strokeWidth={3} />
-        <Line x1={frameLeft + frameWidth} y1={frameTop + frameHeight} x2={frameLeft} y2={frameTop + frameHeight} stroke="#00FF00" strokeWidth={3} />
-        <Line x1={frameLeft} y1={frameTop + frameHeight} x2={frameLeft} y2={frameTop} stroke="#00FF00" strokeWidth={3} />
-
-        {/* Corner markers */}
-        {/* Top-left */}
-        <Line x1={frameLeft} y1={frameTop} x2={frameLeft + 40} y2={frameTop} stroke="#00FF00" strokeWidth={6} />
-        <Line x1={frameLeft} y1={frameTop} x2={frameLeft} y2={frameTop + 40} stroke="#00FF00" strokeWidth={6} />
+      <View style={StyleSheet.absoluteFill}>
+        <View style={[styles.overlay, { height: frameTop }]} />
         
-        {/* Top-right */}
-        <Line x1={frameLeft + frameWidth} y1={frameTop} x2={frameLeft + frameWidth - 40} y2={frameTop} stroke="#00FF00" strokeWidth={6} />
-        <Line x1={frameLeft + frameWidth} y1={frameTop} x2={frameLeft + frameWidth} y2={frameTop + 40} stroke="#00FF00" strokeWidth={6} />
+        <View style={{ flexDirection: 'row', height: frameHeight }}>
+          <View style={[styles.overlay, { width: frameLeft }]} />
+          <View style={{ width: frameWidth, height: frameHeight }}>
+            <View style={styles.frameContainer}>
+              <Animated.View style={[styles.corner, styles.cornerTopLeft, { transform: [{ scale: cornerPulseAnim }] }]} />
+              <Animated.View style={[styles.corner, styles.cornerTopRight, { transform: [{ scale: cornerPulseAnim }] }]} />
+              <Animated.View style={[styles.corner, styles.cornerBottomLeft, { transform: [{ scale: cornerPulseAnim }] }]} />
+              <Animated.View style={[styles.corner, styles.cornerBottomRight, { transform: [{ scale: cornerPulseAnim }] }]} />
+              
+              <View style={[styles.frameLine, styles.frameTop]} />
+              <View style={[styles.frameLine, styles.frameRight]} />
+              <View style={[styles.frameLine, styles.frameBottom]} />
+              <View style={[styles.frameLine, styles.frameLeft]} />
+            </View>
+            
+            {showGuide && (
+              <Animated.View
+                style={[
+                  styles.scanLine,
+                  {
+                    transform: [{ translateY: scanLineTranslateY }],
+                  },
+                ]}
+              />
+            )}
+          </View>
+          <View style={[styles.overlay, { flex: 1 }]} />
+        </View>
         
-        {/* Bottom-left */}
-        <Line x1={frameLeft} y1={frameTop + frameHeight} x2={frameLeft + 40} y2={frameTop + frameHeight} stroke="#00FF00" strokeWidth={6} />
-        <Line x1={frameLeft} y1={frameTop + frameHeight} x2={frameLeft} y2={frameTop + frameHeight - 40} stroke="#00FF00" strokeWidth={6} />
-        
-        {/* Bottom-right */}
-        <Line x1={frameLeft + frameWidth} y1={frameTop + frameHeight} x2={frameLeft + frameWidth - 40} y2={frameTop + frameHeight} stroke="#00FF00" strokeWidth={6} />
-        <Line x1={frameLeft + frameWidth} y1={frameTop + frameHeight} x2={frameLeft + frameWidth} y2={frameTop + frameHeight - 40} stroke="#00FF00" strokeWidth={6} />
-      </Svg>
+        <View style={[styles.overlay, { flex: 1 }]} />
+      </View>
 
-      {/* Animated scanning line */}
-      {showGuide && (
-        <Animated.View
-          style={[
-            styles.scanLine,
-            {
-              transform: [{ translateY: scanLineY }],
-              left: frameLeft,
-              width: frameWidth,
-            },
-          ]}
-        />
-      )}
-
-      {/* Top bar with instructions */}
       <View style={styles.topBar}>
         <Text style={styles.instructionText}>
           {showGuide 
@@ -214,7 +190,6 @@ const DocumentScannerScreen = ({ onCapture, onBack }) => {
         </Text>
       </View>
 
-      {/* Bottom controls */}
       <View style={styles.bottomBar}>
         <TouchableOpacity style={styles.backButton} onPress={onBack}>
           <Text style={styles.backButtonText}>Cancel</Text>
@@ -247,14 +222,78 @@ const styles = StyleSheet.create({
     justifyContent: 'center',
     alignItems: 'center',
   },
+  overlay: {
+    backgroundColor: 'rgba(0, 0, 0, 0.7)',
+  },
+  frameContainer: {
+    flex: 1,
+    position: 'relative',
+  },
+  frameLine: {
+    position: 'absolute',
+    backgroundColor: '#00FF00',
+  },
+  frameTop: {
+    top: 0,
+    left: 0,
+    right: 0,
+    height: 3,
+  },
+  frameRight: {
+    top: 0,
+    right: 0,
+    bottom: 0,
+    width: 3,
+  },
+  frameBottom: {
+    bottom: 0,
+    left: 0,
+    right: 0,
+    height: 3,
+  },
+  frameLeft: {
+    top: 0,
+    left: 0,
+    bottom: 0,
+    width: 3,
+  },
+  corner: {
+    position: 'absolute',
+    width: 40,
+    height: 40,
+    borderColor: '#00FF00',
+    borderWidth: 6,
+  },
+  cornerTopLeft: {
+    top: -3,
+    left: -3,
+    borderRightWidth: 0,
+    borderBottomWidth: 0,
+  },
+  cornerTopRight: {
+    top: -3,
+    right: -3,
+    borderLeftWidth: 0,
+    borderBottomWidth: 0,
+  },
+  cornerBottomLeft: {
+    bottom: -3,
+    left: -3,
+    borderRightWidth: 0,
+    borderTopWidth: 0,
+  },
+  cornerBottomRight: {
+    bottom: -3,
+    right: -3,
+    borderLeftWidth: 0,
+    borderTopWidth: 0,
+  },
   scanLine: {
     position: 'absolute',
+    left: 0,
+    right: 0,
     height: 2,
     backgroundColor: '#00FF00',
-    shadowColor: '#00FF00',
-    shadowOffset: { width: 0, height: 0 },
-    shadowOpacity: 0.8,
-    shadowRadius: 10,
   },
   topBar: {
     position: 'absolute',
@@ -278,7 +317,7 @@ const styles = StyleSheet.create({
     right: 0,
     padding: 30,
     paddingBottom: 40,
-    backgroundColor: 'rgba(0, 0, 0, 0.6)',
+    backgroundColor: 'rgba(0, 0, 0, 0.7)',
     flexDirection: 'row',
     justifyContent: 'space-between',
     alignItems: 'center',
