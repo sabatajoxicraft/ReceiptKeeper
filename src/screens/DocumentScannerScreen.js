@@ -10,7 +10,7 @@ import {
 } from 'react-native';
 import { Camera, useCameraDevice, useFrameProcessor } from 'react-native-vision-camera';
 import { useSharedValue, withTiming, useAnimatedProps } from 'react-native-reanimated';
-import { Worklets } from 'react-native-worklets-core';
+import { Worklets } from 'react-native-worklets';
 import { detect } from 'vision-camera-dynamsoft-document-normalizer';
 import Svg, { Polygon, Line } from 'react-native-svg';
 import Animated from 'react-native-reanimated';
