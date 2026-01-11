@@ -8,6 +8,7 @@ import {
   ActivityIndicator,
   AppState,
 } from 'react-native';
+import RNBootSplash from 'react-native-bootsplash';
 import { initDatabase, getSetting } from './src/database/database';
 import SetupScreen from './src/screens/SetupScreen';
 import MainScreen from './src/screens/MainScreen';
@@ -52,6 +53,8 @@ const App = () => {
       console.error('Initialization error:', error);
     } finally {
       setIsLoading(false);
+      // Hide splash screen after initialization
+      await RNBootSplash.hide({ fade: true, duration: 300 });
     }
   };
 
