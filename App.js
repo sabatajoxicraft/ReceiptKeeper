@@ -77,14 +77,11 @@ const App = () => {
   };
 
   if (isLoading) {
+    // Return null/transparent while loading - native splash stays visible
     return (
-      <SafeAreaView style={styles.container}>
-        <StatusBar barStyle="dark-content" />
-        <View style={styles.loadingContainer}>
-          <ActivityIndicator size="large" color={APP_COLORS.primary} />
-          <Text style={styles.loadingText}>Loading Receipt Keeper...</Text>
-        </View>
-      </SafeAreaView>
+      <View style={styles.splashContainer}>
+        <StatusBar barStyle="light-content" backgroundColor="transparent" translucent />
+      </View>
     );
   }
 
@@ -115,6 +112,10 @@ const styles = StyleSheet.create({
   container: {
     flex: 1,
     backgroundColor: APP_COLORS.background,
+  },
+  splashContainer: {
+    flex: 1,
+    backgroundColor: 'transparent',
   },
   loadingContainer: {
     flex: 1,

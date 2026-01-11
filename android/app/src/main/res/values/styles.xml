@@ -9,16 +9,17 @@
     <!-- Splash / brand -->
     <color name="splashBackground">#0B3D2E</color>
 
+    <!-- Main app theme - keep splash background to prevent white flash -->
     <style name="AppTheme" parent="Theme.AppCompat.DayNight.NoActionBar">
         <item name="android:editTextBackground">@drawable/rn_edit_text_material</item>
         <item name="colorPrimary">@color/colorPrimary</item>
         <item name="colorPrimaryDark">@color/colorPrimaryDark</item>
         <item name="colorAccent">@color/colorAccent</item>
-        <item name="android:windowBackground">@color/colorBackground</item>
-        <item name="android:statusBarColor">@color/colorPrimaryDark</item>
+        <item name="android:windowBackground">@drawable/splash_screen</item>
+        <item name="android:statusBarColor">@color/splashBackground</item>
     </style>
 
-    <!-- Pre-Android 12 splash: window background shows logo while RN loads -->
+    <!-- Splash theme for launcher -->
     <style name="AppTheme.Splash" parent="AppTheme">
         <item name="android:windowBackground">@drawable/splash_screen</item>
         <item name="android:statusBarColor">@color/splashBackground</item>
