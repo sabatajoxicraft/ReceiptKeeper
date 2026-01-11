@@ -77,10 +77,10 @@ const App = () => {
   };
 
   if (isLoading) {
-    // Return null/transparent while loading - native splash stays visible
+    // Dark background matching splash overlay while loading
     return (
       <View style={styles.splashContainer}>
-        <StatusBar barStyle="light-content" backgroundColor="transparent" translucent />
+        <StatusBar barStyle="light-content" backgroundColor="#0B3D2E" translucent />
       </View>
     );
   }
@@ -115,7 +115,7 @@ const styles = StyleSheet.create({
   },
   splashContainer: {
     flex: 1,
-    backgroundColor: 'transparent',
+    backgroundColor: '#0B3D2E',
   },
   loadingContainer: {
     flex: 1,
