@@ -88,7 +88,7 @@ const DocumentScannerScreen = ({ onCapture, onBack }) => {
       
       if (onCapture) {
         onCapture({ 
-          uri: \`file://\${photo.path}\`,
+          uri: `file://${photo.path}`,
           path: photo.path,
           width: photo.width,
           height: photo.height,
