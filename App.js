@@ -14,16 +14,14 @@ import SetupScreen from './src/screens/SetupScreen';
 import MainScreen from './src/screens/MainScreen';
 import CaptureScreen from './src/screens/CaptureScreen';
 import LogViewerScreen from './src/screens/LogViewerScreen';
+import AnimatedSplash from './src/components/AnimatedSplash';
 import Toast from 'react-native-toast-message';
 import { APP_COLORS } from './src/config/constants';
 import { processQueue } from './src/services/uploadQueueService';
 
-// Minimum time to show splash screen (in milliseconds)
-// Adjust this value to control how long the splash is visible
-const MINIMUM_SPLASH_DURATION_MS = 2500;
-
 const App = () => {
   const [isLoading, setIsLoading] = useState(true);
+  const [showAnimatedSplash, setShowAnimatedSplash] = useState(true);
   const [setupCompleted, setSetupCompleted] = useState(false);
   const [currentScreen, setCurrentScreen] = useState('main');
 
@@ -49,7 +47,6 @@ const App = () => {
   }, []);
 
   const initialize = async () => {
-    const splashStart = Date.now();
     try {
       await initDatabase();
       const setupStatus = await getSetting('setup_completed');
@@ -57,14 +54,14 @@ const App = () => {
     } catch (error) {
       console.error('Initialization error:', error);
     } finally {
-      // Ensure splash shows for minimum duration
-      const elapsed = Date.now() - splashStart;
-      const remainingTime = Math.max(0, MINIMUM_SPLASH_DURATION_MS - elapsed);
-      
-      await new Promise(resolve => setTimeout(resolve, remainingTime));
       setIsLoading(false);
-      await RNBootSplash.hide({ fade: true, duration: 300 });
+      // Hide native splash immediately to show animated splash
+      await RNBootSplash.hide({ fade: true, duration: 200 });
     }
+  };
+
+  const handleAnimatedSplashFinish = () => {
+    setShowAnimatedSplash(false);
   };
 
   const handleSetupComplete = () => {
@@ -93,6 +90,16 @@ const App = () => {
     return (
       <View style={styles.splashContainer}>
         <StatusBar barStyle="light-content" backgroundColor="#0B3D2E" translucent />
+      </View>
+    );
+  }
+
+  // Show animated Lottie splash after native splash hides
+  if (showAnimatedSplash) {
+    return (
+      <View style={styles.splashContainer}>
+        <StatusBar barStyle="light-content" backgroundColor="#0B3D2E" translucent />
+        <AnimatedSplash onAnimationFinish={handleAnimatedSplashFinish} />
       </View>
     );
   }
