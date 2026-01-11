@@ -1,86 +1,56 @@
 import React, { useRef, useEffect } from 'react';
-import { View, StyleSheet, Dimensions, Animated, Easing } from 'react-native';
-import Svg, { Rect, Line, Circle, Path } from 'react-native-svg';
+import { View, StyleSheet, Dimensions, Animated, Easing, Image } from 'react-native';
 
 const { width, height } = Dimensions.get('window');
 
-// Animated SVG components
-const AnimatedRect = Animated.createAnimatedComponent(Rect);
-const AnimatedLine = Animated.createAnimatedComponent(Line);
-const AnimatedCircle = Animated.createAnimatedComponent(Circle);
-const AnimatedPath = Animated.createAnimatedComponent(Path);
-
 const AnimatedSplash = ({ onAnimationFinish }) => {
   // Animation values
-  const paperScale = useRef(new Animated.Value(0)).current;
-  const paperOpacity = useRef(new Animated.Value(0)).current;
-  const line1Progress = useRef(new Animated.Value(0)).current;
-  const line2Progress = useRef(new Animated.Value(0)).current;
-  const line3Progress = useRef(new Animated.Value(0)).current;
-  const line4Progress = useRef(new Animated.Value(0)).current;
-  const circleScale = useRef(new Animated.Value(0)).current;
-  const checkProgress = useRef(new Animated.Value(0)).current;
+  const logoScale = useRef(new Animated.Value(0.3)).current;
+  const logoOpacity = useRef(new Animated.Value(0)).current;
+  const checkScale = useRef(new Animated.Value(0)).current;
+  const pulseAnim = useRef(new Animated.Value(1)).current;
 
   useEffect(() => {
     // Sequence of animations
     Animated.sequence([
-      // 1. Paper fades in and scales up
+      // 1. Logo fades in and scales up with spring
       Animated.parallel([
-        Animated.timing(paperOpacity, {
+        Animated.timing(logoOpacity, {
           toValue: 1,
-          duration: 300,
-          useNativeDriver: false,
+          duration: 400,
+          useNativeDriver: true,
         }),
-        Animated.spring(paperScale, {
+        Animated.spring(logoScale, {
           toValue: 1,
           tension: 50,
           friction: 7,
-          useNativeDriver: false,
+          useNativeDriver: true,
         }),
       ]),
-      // 2. Lines draw in sequence
-      Animated.stagger(100, [
-        Animated.timing(line1Progress, {
-          toValue: 1,
-          duration: 200,
-          easing: Easing.out(Easing.ease),
-          useNativeDriver: false,
-        }),
-        Animated.timing(line2Progress, {
-          toValue: 1,
-          duration: 200,
-          easing: Easing.out(Easing.ease),
-          useNativeDriver: false,
-        }),
-        Animated.timing(line3Progress, {
-          toValue: 1,
-          duration: 200,
-          easing: Easing.out(Easing.ease),
-          useNativeDriver: false,
-        }),
-        Animated.timing(line4Progress, {
-          toValue: 1,
-          duration: 200,
-          easing: Easing.out(Easing.ease),
-          useNativeDriver: false,
-        }),
-      ]),
-      // 3. Circle pops in
-      Animated.spring(circleScale, {
+      // 2. Brief pause
+      Animated.delay(200),
+      // 3. Checkmark badge pops in
+      Animated.spring(checkScale, {
         toValue: 1,
-        tension: 60,
+        tension: 100,
         friction: 6,
-        useNativeDriver: false,
+        useNativeDriver: true,
       }),
-      // 4. Checkmark draws
-      Animated.timing(checkProgress, {
-        toValue: 1,
-        duration: 400,
-        easing: Easing.out(Easing.ease),
-        useNativeDriver: false,
-      }),
-      // 5. Brief pause before finishing
-      Animated.delay(300),
+      // 4. Subtle pulse effect
+      Animated.sequence([
+        Animated.timing(pulseAnim, {
+          toValue: 1.05,
+          duration: 150,
+          useNativeDriver: true,
+        }),
+        Animated.timing(pulseAnim, {
+          toValue: 1,
+          duration: 150,
+          useNativeDriver: true,
+        }),
+      ]),
+      // 5. Hold before finishing
+      Animated.delay(400),
     ]).start(() => {
       if (onAnimationFinish) {
         onAnimationFinish();
@@ -88,31 +58,7 @@ const AnimatedSplash = ({ onAnimationFinish }) => {
     });
   }, []);
 
-  // Interpolations for line widths (drawing effect)
-  const line1Width = line1Progress.interpolate({
-    inputRange: [0, 1],
-    outputRange: [55, 145],
-  });
-  const line2Width = line2Progress.interpolate({
-    inputRange: [0, 1],
-    outputRange: [55, 130],
-  });
-  const line3Width = line3Progress.interpolate({
-    inputRange: [0, 1],
-    outputRange: [55, 140],
-  });
-  const line4Width = line4Progress.interpolate({
-    inputRange: [0, 1],
-    outputRange: [55, 120],
-  });
-
-  // Checkmark dash animation
-  const checkDashOffset = checkProgress.interpolate({
-    inputRange: [0, 1],
-    outputRange: [50, 0],
-  });
-
-  const logoSize = Math.min(width, height) * 0.5;
+  const logoSize = Math.min(width, height) * 0.4;
 
   return (
     <View style={styles.container}>
@@ -120,73 +66,52 @@ const AnimatedSplash = ({ onAnimationFinish }) => {
         style={[
           styles.logoContainer,
           {
-            opacity: paperOpacity,
-            transform: [{ scale: paperScale }],
+            opacity: logoOpacity,
+            transform: [
+              { scale: Animated.multiply(logoScale, pulseAnim) },
+            ],
           },
         ]}
       >
-        <Svg width={logoSize} height={logoSize} viewBox="0 0 200 200">
-          {/* Receipt Paper */}
-          <Rect x="40" y="20" width="120" height="160" rx="8" fill="white" />
-          
-          {/* Animated Lines */}
-          <AnimatedLine
-            x1="55"
-            y1="50"
-            x2={line1Width}
-            y2="50"
-            stroke="#E0E0E0"
-            strokeWidth="3"
-          />
-          <AnimatedLine
-            x1="55"
-            y1="70"
-            x2={line2Width}
-            y2="70"
-            stroke="#E0E0E0"
-            strokeWidth="3"
-          />
-          <AnimatedLine
-            x1="55"
-            y1="90"
-            x2={line3Width}
-            y2="90"
-            stroke="#E0E0E0"
-            strokeWidth="3"
-          />
-          <AnimatedLine
-            x1="55"
-            y1="110"
-            x2={line4Width}
-            y2="110"
-            stroke="#E0E0E0"
-            strokeWidth="3"
-          />
-          
-          {/* Green Circle */}
-          <AnimatedCircle
-            cx="140"
-            cy="140"
-            r={circleScale.interpolate({
-              inputRange: [0, 1],
-              outputRange: [0, 35],
-            })}
-            fill="#22C55E"
-          />
-          
-          {/* Checkmark */}
-          <AnimatedPath
-            d="M125 140 L135 150 L158 125"
-            stroke="white"
-            strokeWidth="6"
-            fill="none"
-            strokeLinecap="round"
-            strokeLinejoin="round"
-            strokeDasharray="50"
-            strokeDashoffset={checkDashOffset}
-          />
-        </Svg>
+        {/* Receipt Paper */}
+        <View style={[styles.paper, { width: logoSize * 0.6, height: logoSize * 0.8 }]}>
+          {/* Lines on receipt */}
+          <View style={styles.line} />
+          <View style={[styles.line, { width: '70%' }]} />
+          <View style={[styles.line, { width: '85%' }]} />
+          <View style={[styles.line, { width: '55%' }]} />
+        </View>
+        
+        {/* Green checkmark badge */}
+        <Animated.View
+          style={[
+            styles.checkBadge,
+            {
+              transform: [{ scale: checkScale }],
+              right: logoSize * 0.05,
+              bottom: logoSize * 0.05,
+            },
+          ]}
+        >
+          <View style={styles.checkmark}>
+            <View style={styles.checkShort} />
+            <View style={styles.checkLong} />
+          </View>
+        </Animated.View>
       </Animated.View>
+      
+      {/* App name with fade in */}
+      <Animated.Text
+        style={[
+          styles.appName,
+          {
+            opacity: logoOpacity,
+            transform: [{ scale: logoScale }],
+          },
+        ]}
+      >
+        ReceiptKeeper
+      </Animated.Text>
     </View>
   );
 };
@@ -201,6 +126,72 @@ const styles = StyleSheet.create({
   logoContainer: {
     justifyContent: 'center',
     alignItems: 'center',
+    position: 'relative',
+  },
+  paper: {
+    backgroundColor: 'white',
+    borderRadius: 12,
+    padding: 20,
+    justifyContent: 'center',
+    alignItems: 'flex-start',
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 4 },
+    shadowOpacity: 0.3,
+    shadowRadius: 8,
+    elevation: 8,
+  },
+  line: {
+    height: 4,
+    backgroundColor: '#E0E0E0',
+    borderRadius: 2,
+    marginVertical: 8,
+    width: '90%',
+  },
+  checkBadge: {
+    position: 'absolute',
+    width: 50,
+    height: 50,
+    borderRadius: 25,
+    backgroundColor: '#22C55E',
+    justifyContent: 'center',
+    alignItems: 'center',
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.3,
+    shadowRadius: 4,
+    elevation: 6,
+  },
+  checkmark: {
+    width: 24,
+    height: 24,
+    position: 'relative',
+  },
+  checkShort: {
+    position: 'absolute',
+    width: 10,
+    height: 4,
+    backgroundColor: 'white',
+    borderRadius: 2,
+    transform: [{ rotate: '45deg' }],
+    left: 2,
+    top: 12,
+  },
+  checkLong: {
+    position: 'absolute',
+    width: 18,
+    height: 4,
+    backgroundColor: 'white',
+    borderRadius: 2,
+    transform: [{ rotate: '-45deg' }],
+    left: 6,
+    top: 10,
+  },
+  appName: {
+    marginTop: 30,
+    fontSize: 28,
+    fontWeight: '700',
+    color: 'white',
+    letterSpacing: 1,
   },
 });
 
