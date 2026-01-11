@@ -44,6 +44,12 @@ subprojects {
                         targetCompatibility JavaVersion.VERSION_17
                     }
                 }
+                // Enable buildConfig for all subprojects (required by lottie-react-native)
+                if (it.hasProperty('buildFeatures')) {
+                    buildFeatures {
+                        buildConfig = true
+                    }
+                }
             }
         }
         if (project.hasProperty('kotlin')) {
