@@ -21,9 +21,8 @@ import { saveReceipt } from '../database/database';
 import { buildOneDrivePath } from '../services/onedriveService';
 import Toast from 'react-native-toast-message';
 import DocumentScannerScreen from './DocumentScannerScreen';
-import ReceiptPreviewScreen from './ReceiptPreviewScreen';
 
-const CaptureScreen = ({ onBack }) => {
+const CaptureScreen = ({ onBack, onNavigateToPreview }) => {
   const [capturedImage, setCapturedImage] = useState(null);
   const [cards, setCards] = useState([]);
   const [processing, setProcessing] = useState(false);
@@ -203,9 +202,22 @@ const CaptureScreen = ({ onBack }) => {
       extractedFields: data.extractedFields,
     });
     
-    // Store scanner data and show preview screen
+    // Store scanner data and navigate to preview screen
     setScannerCaptureData(data);
     setShowScanner(false);
+    
+    // Use the app-level navigation to show preview
+    if (onNavigateToPreview) {
+      // Wait for state update then navigate
+      setTimeout(() => {
+        onNavigateToPreview({
+          uri: data.uri,
+          ocrData: data.extractedFields,
+          ocrText: data.ocrText,
+          captureData: data,
+        });
+      }, 100);
+    }
   };
 
   // Show document scanner if requested
@@ -214,35 +226,6 @@ const CaptureScreen = ({ onBack }) => {
       <DocumentScannerScreen
         onCapture={handleScannerCapture}
         onBack={() => setShowScanner(false)}
-      />
-    );
-  }
-
-  // Show receipt preview if we have scanner capture data
-  if (scannerCaptureData) {
-    return (
-      <ReceiptPreviewScreen
-        captureData={scannerCaptureData}
-        onSaved={(receiptData) => {
-          console.log('✅ Receipt saved:', receiptData);
-          Toast.show({
-            type: 'success',
-            text1: '✅ Receipt Saved!',
-            text2: 'Document processed successfully',
-            position: 'top',
-            visibilityTime: 3000,
-          });
-          setScannerCaptureData(null);
-          onBack();
-        }}
-        onBack={() => {
-          setScannerCaptureData(null);
-          // Don't close the whole capture screen, just go back to camera options
-        }}
-        onRetake={() => {
-          setScannerCaptureData(null);
-          setShowScanner(true);
-        }}
       />
     );
   }

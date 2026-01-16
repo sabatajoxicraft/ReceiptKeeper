@@ -13,6 +13,7 @@ import { initDatabase, getSetting } from './src/database/database';
 import SetupScreen from './src/screens/SetupScreen';
 import MainScreen from './src/screens/MainScreen';
 import CaptureScreen from './src/screens/CaptureScreen';
+import ReceiptPreviewScreen from './src/screens/ReceiptPreviewScreen';
 import LogViewerScreen from './src/screens/LogViewerScreen';
 import AnimatedSplash from './src/components/AnimatedSplash';
 import Toast from 'react-native-toast-message';
@@ -24,6 +25,7 @@ const App = () => {
   const [showAnimatedSplash, setShowAnimatedSplash] = useState(true);
   const [setupCompleted, setSetupCompleted] = useState(false);
   const [currentScreen, setCurrentScreen] = useState('main');
+  const [previewScreenData, setPreviewScreenData] = useState(null);
 
   useEffect(() => {
     initialize();
@@ -75,6 +77,7 @@ const App = () => {
 
   const handleBackToMain = () => {
     setCurrentScreen('main');
+    setPreviewScreenData(null);
   };
 
   const handleSettings = () => {
@@ -83,6 +86,18 @@ const App = () => {
 
   const handleViewLogs = () => {
     setCurrentScreen('logs');
+  };
+
+  const handleNavigateToPreview = (data) => {
+    // data should contain: { uri, ocrData, captureData }
+    setPreviewScreenData(data);
+    setCurrentScreen('preview');
+  };
+
+  const handlePreviewSaved = () => {
+    // Receipt was successfully saved in preview screen
+    setCurrentScreen('main');
+    setPreviewScreenData(null);
   };
 
   if (isLoading) {
@@ -111,7 +126,17 @@ const App = () => {
         {!setupCompleted || currentScreen === 'setup' ? (
           <SetupScreen onSetupComplete={handleSetupComplete} />
         ) : currentScreen === 'capture' ? (
-          <CaptureScreen onBack={handleBackToMain} />
+          <CaptureScreen 
+            onBack={handleBackToMain}
+            onNavigateToPreview={handleNavigateToPreview}
+          />
+        ) : currentScreen === 'preview' && previewScreenData ? (
+          <ReceiptPreviewScreen
+            captureData={previewScreenData}
+            onSaved={handlePreviewSaved}
+            onBack={handleBackToMain}
+            onRetake={() => setCurrentScreen('capture')}
+          />
         ) : currentScreen === 'logs' ? (
           <LogViewerScreen onBack={handleBackToMain} />
         ) : (

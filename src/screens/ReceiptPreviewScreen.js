@@ -11,8 +11,11 @@ import {
   TextInput as RNTextInput,
   Platform,
 } from 'react-native';
+import RNFS from 'react-native-fs';
 import { APP_COLORS, DEFAULT_CARDS, PAYMENT_METHODS } from '../config/constants';
 import { saveOCRData, saveReceipt, getReceipts } from '../database/database';
+import { saveImageToLocal } from '../utils/fileUtils';
+import { buildOneDrivePath } from '../services/onedriveService';
 import CardBadge from '../components/CardBadge';
 import Toast from 'react-native-toast-message';
 
@@ -29,11 +32,13 @@ const RECEIPT_CATEGORIES = [
 ];
 
 const ReceiptPreviewScreen = ({ 
+  captureData,
   imagePath, 
   ocrData, 
   receiptId,
   onBack, 
-  onSaveSuccess 
+  onSaved,
+  onRetake
 }) => {
   // Form state
   const [date, setDate] = useState(new Date());
@@ -51,6 +56,7 @@ const ReceiptPreviewScreen = ({
   const [fieldConfidences, setFieldConfidences] = useState({});
   const [rawOcrText, setRawOcrText] = useState('');
   const [overallConfidence, setOverallConfidence] = useState(0);
+  const [imageUri, setImageUri] = useState('');
 
   // Processing state
   const [saving, setSaving] = useState(false);
@@ -61,9 +67,40 @@ const ReceiptPreviewScreen = ({
 
   useEffect(() => {
     initializeForm();
-  }, [ocrData, receiptId]);
+  }, [captureData, ocrData, receiptId]);
 
   const initializeForm = async () => {
+    // Handle captureData from document scanner
+    if (captureData) {
+      console.log('Initializing form from captureData:', {
+        uri: captureData.uri,
+        extractedFields: captureData.extractedFields,
+      });
+      
+      setImageUri(captureData.uri || '');
+      setRawOcrText(captureData.ocrText || '');
+
+      if (captureData.extractedFields) {
+        const fields = captureData.extractedFields;
+        
+        if (fields.date) {
+          try {
+            setDate(new Date(fields.date));
+          } catch (e) {
+            setDate(new Date());
+          }
+        }
+        
+        setVendorName(fields.vendor || '');
+        setTotalAmount(fields.amount?.toString() || '');
+        setTaxAmount(fields.tax?.toString() || '');
+        setInvoiceNumber(fields.invoiceNumber || '');
+        setCategory(fields.category || 'other');
+      }
+      return;
+    }
+
+    // Handle ocrData from props (legacy support)
     if (!ocrData) return;
 
     // Set date if available
@@ -82,6 +119,7 @@ const ReceiptPreviewScreen = ({
     setInvoiceNumber(ocrData.invoiceNumber || '');
     setCategory(ocrData.category || 'other');
     setRawOcrText(ocrData.rawOcrText || '');
+    setImageUri(imagePath || '');
 
     // Store field confidences
     const confidences = {};
@@ -196,7 +234,52 @@ const ReceiptPreviewScreen = ({
     setSaving(true);
 
     try {
-      // Prepare OCR data to save
+      // Step 1: Save the receipt file and get a receiptId if we don't have one
+      let finalReceiptId = receiptId;
+      
+      if (!finalReceiptId && imageUri) {
+        console.log('💾 Saving receipt image...');
+        try {
+          const base64Data = await RNFS.readFile(
+            imageUri.replace('file://', ''),
+            'base64'
+          );
+          
+          const { filePath, filename, year, month } = await saveImageToLocal(
+            base64Data,
+            'jpg'
+          );
+          
+          const onedrivePath = buildOneDrivePath(year, month, filename);
+          
+          // Determine payment method
+          const paymentMethod = selectedCard ? PAYMENT_METHODS.CARD : PAYMENT_METHODS.CASH;
+          const cardName = selectedCard?.name || null;
+          
+          // Save to database
+          const result = await saveReceipt({
+            filename,
+            filePath,
+            onedrivePath,
+            paymentMethod,
+            cardName,
+            year,
+            month,
+          });
+          
+          // In case saveReceipt returns an ID
+          if (result?.id) {
+            finalReceiptId = result.id;
+          }
+          
+          console.log('✅ Receipt image saved:', filePath);
+        } catch (fileError) {
+          console.warn('⚠️ Could not save image file:', fileError);
+          // Continue anyway - we can still save OCR data
+        }
+      }
+
+      // Step 2: Prepare and save OCR data
       const ocrDataToSave = {
         vendorName: vendorName.trim(),
         totalAmount: parseFloat(totalAmount),
@@ -208,9 +291,13 @@ const ReceiptPreviewScreen = ({
         ocrConfidence: overallConfidence,
       };
 
-      // Save OCR data to database using the receiptId
-      if (receiptId) {
-        await saveOCRData(receiptId, ocrDataToSave);
+      // Step 3: Save OCR data if we have a receiptId
+      if (finalReceiptId) {
+        console.log('💾 Saving OCR data for receipt:', finalReceiptId);
+        await saveOCRData(finalReceiptId, ocrDataToSave);
+        console.log('✅ OCR data saved');
+      } else {
+        console.warn('⚠️ No receiptId available, skipping OCR data save');
       }
 
       // Show success message
@@ -223,13 +310,15 @@ const ReceiptPreviewScreen = ({
       });
 
       // Callback on success
-      if (onSaveSuccess) {
-        onSaveSuccess({
-          receiptId,
-          ocrData: ocrDataToSave,
-          date,
-          card: selectedCard,
-        });
+      if (onSaved) {
+        setTimeout(() => {
+          onSaved({
+            receiptId: finalReceiptId,
+            ocrData: ocrDataToSave,
+            date,
+            card: selectedCard,
+          });
+        }, 800);
       } else {
         // Default: go back to main screen
         setTimeout(() => {
@@ -237,7 +326,7 @@ const ReceiptPreviewScreen = ({
         }, 800);
       }
     } catch (error) {
-      console.error('Error saving OCR data:', error);
+      console.error('Error saving receipt:', error);
       Toast.show({
         type: 'error',
         text1: '❌ Error',
@@ -256,7 +345,13 @@ const ReceiptPreviewScreen = ({
       {
         text: 'Retake',
         style: 'destructive',
-        onPress: () => onBack?.(),
+        onPress: () => {
+          if (onRetake) {
+            onRetake();
+          } else {
+            onBack?.();
+          }
+        },
       },
     ]);
   };
@@ -269,10 +364,10 @@ const ReceiptPreviewScreen = ({
       </View>
 
       {/* Receipt Image Preview */}
-      {imagePath && (
+      {imageUri && (
         <View style={styles.imageSection}>
           <Text style={styles.sectionTitle}>Receipt Image</Text>
-          <Image source={{ uri: imagePath }} style={styles.thumbnail} />
+          <Image source={{ uri: imageUri }} style={styles.thumbnail} />
         </View>
       )}
 
