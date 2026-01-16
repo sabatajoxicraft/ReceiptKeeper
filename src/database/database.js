@@ -1,4 +1,5 @@
 import SQLite from 'react-native-sqlite-storage';
+import { runMigrations, getMigrationStatus } from './migrationRunner.js';
 
 SQLite.DEBUG(false);
 SQLite.enablePromise(true);
@@ -39,6 +40,12 @@ export const initDatabase = async () => {
     `);
 
     console.log('Database initialized successfully');
+
+    // Run database migrations
+    console.log('Running database migrations...');
+    const migrationResults = await runMigrations(database);
+    console.log('Migrations completed:', migrationResults);
+
     return database;
   } catch (error) {
     console.error('Database initialization error:', error);
@@ -107,4 +114,48 @@ export const saveSetting = async (key, value) => {
     'INSERT OR REPLACE INTO settings (key, value) VALUES (?, ?)',
     [key, value]
   );
+};
+
+/**
+ * Save OCR-extracted data to a receipt
+ * @param {number} receiptId - ID of the receipt
+ * @param {Object} ocrData - OCR extracted data
+ * @returns {Promise<void>}
+ */
+export const saveOCRData = async (receiptId, ocrData) => {
+  const db = getDatabase();
+  const {
+    vendorName,
+    totalAmount,
+    taxAmount,
+    invoiceNumber,
+    category,
+    currency = 'USD',
+    rawOcrText,
+    ocrConfidence,
+  } = ocrData;
+
+  await db.executeSql(
+    `UPDATE receipts 
+     SET vendor_name = ?, 
+         total_amount = ?, 
+         tax_amount = ?, 
+         invoice_number = ?, 
+         category = ?, 
+         currency = ?, 
+         raw_ocr_text = ?, 
+         ocr_confidence = ?, 
+         extracted_at = CURRENT_TIMESTAMP 
+     WHERE id = ?`,
+    [vendorName, totalAmount, taxAmount, invoiceNumber, category, currency, rawOcrText, ocrConfidence, receiptId]
+  );
+};
+
+/**
+ * Get migration status
+ * @returns {Promise<Array>} - Array of applied migrations
+ */
+export const getDatabaseMigrationStatus = async () => {
+  const db = getDatabase();
+  return await getMigrationStatus(db);
 };

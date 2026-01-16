@@ -1,0 +1,278 @@
+╔════════════════════════════════════════════════════════════════════════════════╗
+║                  ReceiptKeeper Database Migration System                       ║
+║                            Architecture Diagram                                ║
+╚════════════════════════════════════════════════════════════════════════════════╝
+
+
+┌─────────────────────────────────────────────────────────────────────────────┐
+│                           APPLICATION STARTUP                               │
+└─────────────────────────────────────────────────────────────────────────────┘
+                                    ↓
+                           App.js starts up
+                                    ↓
+                         import { initDatabase }
+                                    ↓
+
+
+┌─────────────────────────────────────────────────────────────────────────────┐
+│                      DATABASE INITIALIZATION                                │
+│                    (src/database/database.js)                               │
+└─────────────────────────────────────────────────────────────────────────────┘
+                                    ↓
+                     ┌──────────────────────────┐
+                     │ Open SQLite Database     │
+                     └──────────────────────────┘
+                                    ↓
+                     ┌──────────────────────────┐
+                     │ Create Base Tables       │
+                     │ - receipts               │
+                     │ - settings               │
+                     └──────────────────────────┘
+                                    ↓
+                  "Running database migrations..."
+                                    ↓
+
+
+┌─────────────────────────────────────────────────────────────────────────────┐
+│                     MIGRATION EXECUTION PIPELINE                            │
+│                   (src/database/migrationRunner.js)                         │
+└─────────────────────────────────────────────────────────────────────────────┘
+
+    ┌─ runMigrations(db) ─────────────────────────────────────────┐
+    │                                                              │
+    │  Step 1: Initialize migrations tracking table               │
+    │  ┌──────────────────────────────────────────────┐          │
+    │  │ CREATE TABLE IF NOT EXISTS migrations (      │          │
+    │  │   id TEXT PRIMARY KEY,                       │          │
+    │  │   name TEXT,                                 │          │
+    │  │   applied_at DATETIME,                       │          │
+    │  │   version TEXT                               │          │
+    │  │ )                                            │          │
+    │  └──────────────────────────────────────────────┘          │
+    │                       ↓                                      │
+    │  Step 2: For each migration in MIGRATIONS array             │
+    │  ┌──────────────────────────────────────────────┐          │
+    │  │ Check: Is migration already applied?         │          │
+    │  │                                              │          │
+    │  │  YES → Skip (already in migrations table)    │          │
+    │  │  NO  → Execute migration                     │          │
+    │  └──────────────────────────────────────────────┘          │
+    │                       ↓                                      │
+    │  Step 3: Record migration                                   │
+    │  ┌──────────────────────────────────────────────┐          │
+    │  │ INSERT INTO migrations                       │          │
+    │  │   (id, name, version)                        │          │
+    │  │ VALUES (...)                                 │          │
+    │  └──────────────────────────────────────────────┘          │
+    │                       ↓                                      │
+    │  Return: Migration results and status                       │
+    └─────────────────────────────────────────────────────────────┘
+
+
+┌─────────────────────────────────────────────────────────────────────────────┐
+│                         MIGRATION 001 EXECUTION                             │
+│              (src/database/migrations/001_add_ocr_fields.js)                │
+└─────────────────────────────────────────────────────────────────────────────┘
+
+    Export Functions:
+    ├─ migrate(db)
+    ├─ getMigrationInfo()
+    └─ rollback(db)
+
+    Migration Logic:
+    ┌─────────────────────────────────────────────────────┐
+    │ migrate(db)                                         │
+    │  ├─ Add vendor_name        ← TEXT                   │
+    │  ├─ Add total_amount        ← REAL                  │
+    │  ├─ Add tax_amount          ← REAL                  │
+    │  ├─ Add invoice_number      ← TEXT                  │
+    │  ├─ Add category            ← TEXT                  │
+    │  ├─ Add currency            ← TEXT (default 'USD') │
+    │  ├─ Add raw_ocr_text        ← TEXT                  │
+    │  ├─ Add ocr_confidence      ← REAL                  │
+    │  └─ Add extracted_at        ← DATETIME              │
+    │                                                     │
+    │ Each add operation:                                 │
+    │  1. Check if column exists                          │
+    │  2. If not: ALTER TABLE ADD COLUMN                  │
+    │  3. Log success or skip                             │
+    │  4. Handle errors gracefully                        │
+    └─────────────────────────────────────────────────────┘
+
+
+┌─────────────────────────────────────────────────────────────────────────────┐
+│                        UPDATED DATABASE SCHEMA                              │
+└─────────────────────────────────────────────────────────────────────────────┘
+
+    receipts table:
+    
+    Original Columns          │  OCR Fields (Migration 001)
+    ────────────────────────────────────────────────────────
+    id (INTEGER PK)           │  vendor_name (TEXT)
+    filename (TEXT)           │  total_amount (REAL)
+    file_path (TEXT)          │  tax_amount (REAL)
+    onedrive_path (TEXT)      │  invoice_number (TEXT)
+    payment_method (TEXT)     │  category (TEXT)
+    card_name (TEXT)          │  currency (TEXT, def 'USD')
+    date_captured (DATETIME)  │  raw_ocr_text (TEXT)
+    upload_status (TEXT)      │  ocr_confidence (REAL)
+    year (TEXT)               │  extracted_at (DATETIME)
+    month (TEXT)              │
+    created_at (DATETIME)     │
+
+
+┌─────────────────────────────────────────────────────────────────────────────┐
+│                          USAGE FLOW EXAMPLES                                │
+└─────────────────────────────────────────────────────────────────────────────┘
+
+    Example 1: Save Receipt with OCR Data
+    ─────────────────────────────────────
+    1. Save receipt (returns ID)
+       saveReceipt({ filename, filePath, ... })
+    
+    2. Extract OCR data from image
+       ocrData = performOCRExtraction(imagePath)
+    
+    3. Save OCR data
+       saveOCRData(receiptId, {
+         vendorName, totalAmount, taxAmount,
+         invoiceNumber, category, currency,
+         rawOcrText, ocrConfidence
+       })
+
+    Example 2: Query OCR Fields
+    ────────────────────────────
+    1. Get receipts
+       receipts = getReceipts(50)
+    
+    2. Access OCR fields
+       receipts.forEach(r => {
+         if (r.vendor_name) {
+           console.log(r.vendor_name, r.total_amount)
+         }
+       })
+
+    Example 3: Check Migration Status
+    ─────────────────────────────────
+    status = getDatabaseMigrationStatus()
+    // Returns array of applied migrations
+
+
+┌─────────────────────────────────────────────────────────────────────────────┐
+│                       FILE STRUCTURE & EXPORTS                              │
+└─────────────────────────────────────────────────────────────────────────────┘
+
+    src/database/
+    ├── database.js ─────────────────── Exports:
+    │                                    • initDatabase()
+    │                                    • getDatabase()
+    │                                    • saveReceipt()
+    │                                    • getReceipts()
+    │                                    • saveOCRData() ← NEW
+    │                                    • getDatabaseMigrationStatus() ← NEW
+    │
+    ├── migrationRunner.js ─────────── Exports:
+    │                                    • runMigrations()
+    │                                    • getMigrationStatus()
+    │
+    ├── migrations/
+    │   └── 001_add_ocr_fields.js ─── Exports:
+    │                                    • migrate()
+    │                                    • getMigrationInfo()
+    │                                    • rollback()
+    │
+    └── [Documentation]
+        ├── MIGRATIONS.md ────────────── Migration overview
+        ├── MIGRATION_GUIDE.md ───────── Complete guide
+        ├── README_MIGRATIONS.md ─────── Summary & quick ref
+        ├── examples.js ──────────────── 7 working examples
+        ├── VALIDATION.js ────────────── Verification script
+        └── ARCHITECTURE.txt ─────────── This file
+
+
+┌─────────────────────────────────────────────────────────────────────────────┐
+│                          ERROR HANDLING FLOW                                │
+└─────────────────────────────────────────────────────────────────────────────┘
+
+    Migration Execution
+              ↓
+    ┌─────────────────────┐
+    │ Try to run migration│
+    └─────────────────────┘
+         ↓          ↓
+        ✓           ✗
+        │           │
+        │      Log error
+        │           │
+        │      Log warning
+        │           │
+        │      Continue to next
+        │       migration
+        │           │
+        ↓           ↓
+     Success   Graceful
+              degradation
+              (partial
+              execution)
+
+
+┌─────────────────────────────────────────────────────────────────────────────┐
+│                        IDEMPOTENCY MECHANISM                                │
+└─────────────────────────────────────────────────────────────────────────────┘
+
+    First Run:
+    ┌──────────────────────────────────────────┐
+    │ Migration 001 Status: NOT APPLIED        │
+    │ ↓ Execute migration                      │
+    │ ✓ Add all OCR columns                    │
+    │ ↓ Record in migrations table             │
+    │ DONE                                     │
+    └──────────────────────────────────────────┘
+
+    Second Run (or next app startup):
+    ┌──────────────────────────────────────────┐
+    │ Migration 001 Status: ALREADY APPLIED    │
+    │ ↓ Skip (idempotent)                      │
+    │ ✓ Log "already applied, skipping"        │
+    │ DONE                                     │
+    └──────────────────────────────────────────┘
+
+    Idempotency Achieved By:
+    • Checking if each column already exists
+    • Recording applied migrations in database
+    • Skipping if migration ID already in migrations table
+
+
+┌─────────────────────────────────────────────────────────────────────────────┐
+│                      EXTENDING WITH NEW MIGRATIONS                          │
+└─────────────────────────────────────────────────────────────────────────────┘
+
+    1. Create File
+       src/database/migrations/002_new_migration.js
+       └─ Implement migrate(), getMigrationInfo()
+
+    2. Register
+       migrationRunner.js
+       └─ Add to MIGRATIONS array
+
+    3. Document
+       MIGRATIONS.md
+       └─ Add migration details
+
+    4. Test
+       getDatabaseMigrationStatus()
+       └─ Verify it runs on next startup
+
+
+═══════════════════════════════════════════════════════════════════════════════
+
+Key Features:
+  ✓ Automatic execution on app startup
+  ✓ Idempotent (safe to run multiple times)
+  ✓ Tracked in database for audit trail
+  ✓ Comprehensive error handling
+  ✓ Easy to extend with new migrations
+  ✓ Detailed logging for debugging
+  ✓ No performance impact after first run
+
+═══════════════════════════════════════════════════════════════════════════════

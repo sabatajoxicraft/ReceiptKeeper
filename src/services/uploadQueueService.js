@@ -69,10 +69,6 @@ export const addToQueue = async (localPath, remotePath) => {
     await saveQueue(queue);
     
     console.log(`Added to upload queue: ${remotePath}`);
-    
-    // Try to upload immediately if online
-    // Don't await this, let it run in background but handle errors
-    // processQueue().catch(err => console.error('Background upload failed:', err));
     console.log('Skipping auto-upload: manual sync only');
     
     return item.id;

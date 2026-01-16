@@ -8,9 +8,14 @@ import {
   ActivityIndicator,
   Animated,
   Dimensions,
+  Modal,
 } from 'react-native';
-import { Camera, useCameraDevice } from 'react-native-vision-camera';
+import { Camera, useCameraDevice, useFrameProcessor } from 'react-native-vision-camera';
+import { useTextRecognition } from 'react-native-vision-camera-ocr-plus';
+import { PhotoRecognizer } from 'react-native-vision-camera-ocr-plus';
+import { runAtTargetFps, runOnJS } from 'react-native-reanimated';
 import { APP_COLORS } from '../config/constants';
+import { extractAll } from '../utils/ocrFieldExtractor';
 
 const { width, height } = Dimensions.get('window');
 
@@ -18,17 +23,55 @@ const DocumentScannerScreen = ({ onCapture, onBack }) => {
   const [hasPermission, setHasPermission] = useState(false);
   const [isActive, setIsActive] = useState(true);
   const [capturing, setCapturing] = useState(false);
+  const [processing, setProcessing] = useState(false);
   const [showGuide, setShowGuide] = useState(true);
+  const [liveOcrText, setLiveOcrText] = useState('');
+  const [ocrConfidence, setOcrConfidence] = useState(0);
+  const [extractedFields, setExtractedFields] = useState(null);
+  const [showOcrOverlay, setShowOcrOverlay] = useState(false);
   
   const camera = useRef(null);
   const device = useCameraDevice('back');
   const edgePulseAnim = useRef(new Animated.Value(1)).current;
+  
+  // OCR Configuration for real-time text recognition
+  const { scanText } = useTextRecognition({
+    language: 'latin',
+    frameSkipThreshold: 10, // Process every 10th frame for performance
+    useLightweightMode: true, // Optimized for Android
+  });
 
   useEffect(() => {
     checkCameraPermission();
     startEdgeAnimation();
     return () => setIsActive(false);
   }, []);
+
+  // Frame processor for real-time OCR (runs on camera frames)
+  const frameProcessor = useFrameProcessor((frame) => {
+    'worklet';
+    
+    runAtTargetFps(2, () => {
+      try {
+        const result = scanText(frame);
+        
+        if (result?.text && result.text.length > 10) {
+          runOnJS(setLiveOcrText)(result.text);
+          
+          // Calculate confidence based on text length and quality
+          const confidence = Math.min(0.8, result.text.length / 500);
+          runOnJS(setOcrConfidence)(confidence);
+          
+          // Show OCR overlay if we have meaningful text
+          if (result.text.length > 50) {
+            runOnJS(setShowOcrOverlay)(true);
+          }
+        }
+      } catch (error) {
+        console.warn('Frame processor error:', error);
+      }
+    });
+  }, [scanText]);
 
   const checkCameraPermission = async () => {
     const status = await Camera.requestCameraPermission();
@@ -63,19 +106,64 @@ const DocumentScannerScreen = ({ onCapture, onBack }) => {
 
     setCapturing(true);
     setShowGuide(false);
+    setProcessing(true);
     
     try {
+      console.log('📸 Capturing photo...');
       const photo = await camera.current.takePhoto({
         qualityPrioritization: 'balanced',
         flash: 'off',
       });
       
+      const photoUri = `file://${photo.path}`;
+      console.log('✅ Photo captured:', photoUri);
+
+      // Step 1: Extract OCR text from captured photo
+      console.log('🔍 Running OCR on captured photo...');
+      let ocrText = '';
+      try {
+        const ocrResult = await PhotoRecognizer({
+          uri: photoUri,
+          orientation: 'portrait',
+        });
+        ocrText = ocrResult?.text || '';
+        console.log('✅ OCR completed, text length:', ocrText.length);
+        console.log('Raw OCR text:', ocrText.substring(0, 200) + '...');
+      } catch (ocrError) {
+        console.warn('⚠️ OCR failed, continuing without extraction:', ocrError);
+        ocrText = liveOcrText; // Fall back to live OCR text
+      }
+
+      // Step 2: Extract structured fields from OCR text
+      console.log('📋 Extracting fields from OCR text...');
+      let extractedData = null;
+      if (ocrText && ocrText.length > 10) {
+        try {
+          extractedData = extractAll(ocrText);
+          console.log('✅ Field extraction complete:', {
+            date: extractedData.date,
+            amount: extractedData.amount,
+            vendor: extractedData.vendor,
+            invoiceNumber: extractedData.invoiceNumber,
+            tax: extractedData.tax,
+          });
+        } catch (extractError) {
+          console.warn('⚠️ Field extraction failed:', extractError);
+          extractedData = null;
+        }
+      }
+
+      // Step 3: Pass data to parent with OCR information
+      console.log('📤 Sending capture data to parent screen...');
       if (onCapture) {
-        onCapture({ 
-          uri: `file://${photo.path}`,
+        onCapture({
+          uri: photoUri,
           path: photo.path,
           width: photo.width,
           height: photo.height,
+          ocrText: ocrText,
+          extractedFields: extractedData,
+          timestamp: new Date().toISOString(),
         });
       }
       
@@ -83,13 +171,14 @@ const DocumentScannerScreen = ({ onCapture, onBack }) => {
         onBack();
       }, 500);
     } catch (error) {
-      console.error('Capture error:', error);
+      console.error('❌ Capture error:', error);
       Alert.alert('Error', 'Failed to capture document: ' + error.message);
       setShowGuide(true);
     } finally {
       setCapturing(false);
+      setProcessing(false);
     }
-  }, [capturing, onCapture, onBack]);
+  }, [capturing, onCapture, onBack, liveOcrText]);
 
   if (!hasPermission) {
     return (
@@ -125,6 +214,7 @@ const DocumentScannerScreen = ({ onCapture, onBack }) => {
         device={device}
         isActive={isActive}
         photo={true}
+        frameProcessor={frameProcessor}
       />
 
       {/* Dark overlay */}
@@ -161,26 +251,80 @@ const DocumentScannerScreen = ({ onCapture, onBack }) => {
 
       <View style={styles.topBar}>
         <Text style={styles.instructionText}>
-          {showGuide 
+          {processing 
+            ? '🔍 Processing OCR...' 
+            : showGuide 
             ? '📄 Position document within frame' 
             : 'Processing...'}
         </Text>
+        
+        {/* OCR Confidence indicator */}
+        {ocrConfidence > 0 && !processing && (
+          <View style={styles.confidenceIndicator}>
+            <Text style={styles.confidenceText}>
+              OCR Confidence: {Math.round(ocrConfidence * 100)}%
+            </Text>
+            <View style={styles.confidenceBar}>
+              <View
+                style={[
+                  styles.confidenceFill,
+                  {
+                    width: `${ocrConfidence * 100}%`,
+                    backgroundColor: ocrConfidence > 0.7 ? '#00FF00' : '#FFaa00',
+                  },
+                ]}
+              />
+            </View>
+          </View>
+        )}
       </View>
 
+      {/* OCR Text Overlay */}
+      <Modal
+        visible={showOcrOverlay && liveOcrText.length > 0 && !processing}
+        transparent={true}
+        animationType="fade"
+        onRequestClose={() => setShowOcrOverlay(false)}>
+        <View style={styles.ocrOverlayContainer}>
+          <TouchableOpacity
+            style={styles.ocrOverlayClose}
+            onPress={() => setShowOcrOverlay(false)}>
+            <Text style={styles.ocrOverlayCloseText}>✕</Text>
+          </TouchableOpacity>
+          
+          <Text style={styles.ocrOverlayTitle}>📋 Detected Text</Text>
+          
+          <View style={styles.ocrOverlayContent}>
+            <Text style={styles.ocrOverlayText}>{liveOcrText}</Text>
+          </View>
+          
+          <TouchableOpacity
+            style={styles.ocrOverlayButton}
+            onPress={() => setShowOcrOverlay(false)}>
+            <Text style={styles.ocrOverlayButtonText}>Got it</Text>
+          </TouchableOpacity>
+        </View>
+      </Modal>
+
       <View style={styles.bottomBar}>
-        <TouchableOpacity style={styles.backButton} onPress={onBack}>
+        <TouchableOpacity style={styles.backButton} onPress={onBack} disabled={processing || capturing}>
           <Text style={styles.backButtonText}>Cancel</Text>
         </TouchableOpacity>
 
         <TouchableOpacity
           style={[
             styles.captureButton,
-            capturing && styles.captureButtonDisabled,
+            (capturing || processing) && styles.captureButtonDisabled,
           ]}
           onPress={handleCapture}
-          disabled={capturing}>
-          {capturing ? (
-            <ActivityIndicator size="large" color="#FFFFFF" />
+          disabled={capturing || processing}>
+          {capturing || processing ? (
+            <View style={styles.processingIndicator}>
+              <ActivityIndicator size="large" color="#FFFFFF" />
+              <Text style={styles.processingLabel}>
+                {processing ? 'OCR' : 'Snap'}
+              </Text>
+            </View>
           ) : (
             <View style={styles.captureButtonInner} />
           )}
@@ -239,6 +383,82 @@ const styles = StyleSheet.create({
     fontWeight: '600',
     textAlign: 'center',
   },
+  confidenceIndicator: {
+    marginTop: 15,
+    paddingHorizontal: 10,
+  },
+  confidenceText: {
+    color: '#00FF00',
+    fontSize: 12,
+    fontWeight: '600',
+    marginBottom: 5,
+    textAlign: 'center',
+  },
+  confidenceBar: {
+    height: 4,
+    backgroundColor: 'rgba(255, 255, 255, 0.2)',
+    borderRadius: 2,
+    overflow: 'hidden',
+  },
+  confidenceFill: {
+    height: '100%',
+    borderRadius: 2,
+  },
+  ocrOverlayContainer: {
+    flex: 1,
+    backgroundColor: 'rgba(0, 0, 0, 0.95)',
+    justifyContent: 'space-between',
+    padding: 20,
+    paddingTop: 60,
+  },
+  ocrOverlayClose: {
+    position: 'absolute',
+    top: 30,
+    right: 20,
+    width: 40,
+    height: 40,
+    borderRadius: 20,
+    backgroundColor: 'rgba(255, 255, 255, 0.2)',
+    justifyContent: 'center',
+    alignItems: 'center',
+  },
+  ocrOverlayCloseText: {
+    color: '#FFFFFF',
+    fontSize: 24,
+    fontWeight: 'bold',
+  },
+  ocrOverlayTitle: {
+    color: '#00FF00',
+    fontSize: 20,
+    fontWeight: '700',
+    marginBottom: 20,
+    textAlign: 'center',
+  },
+  ocrOverlayContent: {
+    flex: 1,
+    backgroundColor: 'rgba(0, 255, 0, 0.05)',
+    borderRadius: 10,
+    padding: 15,
+    marginBottom: 20,
+    borderWidth: 1,
+    borderColor: 'rgba(0, 255, 0, 0.3)',
+  },
+  ocrOverlayText: {
+    color: '#FFFFFF',
+    fontSize: 14,
+    lineHeight: 22,
+  },
+  ocrOverlayButton: {
+    backgroundColor: '#00FF00',
+    padding: 15,
+    borderRadius: 10,
+    alignItems: 'center',
+  },
+  ocrOverlayButtonText: {
+    color: '#000',
+    fontSize: 16,
+    fontWeight: '700',
+  },
   bottomBar: {
     position: 'absolute',
     bottom: 0,
@@ -277,6 +497,16 @@ const styles = StyleSheet.create({
     height: 50,
     borderRadius: 25,
     backgroundColor: '#FFFFFF',
+  },
+  processingIndicator: {
+    justifyContent: 'center',
+    alignItems: 'center',
+  },
+  processingLabel: {
+    color: '#FFFFFF',
+    fontSize: 10,
+    fontWeight: '600',
+    marginTop: 5,
   },
   placeholder: {
     width: 60,

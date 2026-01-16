@@ -54,7 +54,6 @@ export const scanForMissingReceipts = async () => {
               if (file.isFile() && filenameRegex.test(file.name)) {
                 // Check if we already have this EXACT path in DB
                 if (knownPaths.has(file.path)) {
-                  // console.log(`Skipping known file: ${file.name}`);
                   continue;
                 }
 

@@ -12,6 +12,12 @@ android {
     buildToolsVersion rootProject.ext.buildToolsVersion
     compileSdk rootProject.ext.compileSdkVersion
 
+    // Enable Jumbo Mode for react-native-pdf-lib (PdfBox-Android)
+    // This allows handling >64K method references
+    dexOptions {
+        jumboMode = true
+    }
+
     namespace "com.receiptkeeper"
     defaultConfig {
         applicationId "com.receiptkeeper"
