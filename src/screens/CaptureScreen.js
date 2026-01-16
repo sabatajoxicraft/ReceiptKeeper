@@ -21,6 +21,7 @@ import { saveReceipt } from '../database/database';
 import { buildOneDrivePath } from '../services/onedriveService';
 import Toast from 'react-native-toast-message';
 import DocumentScannerScreen from './DocumentScannerScreen';
+import ReceiptPreviewScreen from './ReceiptPreviewScreen';
 
 const CaptureScreen = ({ onBack, onNavigateToPreview }) => {
   const [capturedImage, setCapturedImage] = useState(null);
@@ -202,22 +203,29 @@ const CaptureScreen = ({ onBack, onNavigateToPreview }) => {
       extractedFields: data.extractedFields,
     });
     
-    // Store scanner data and navigate to preview screen
+    // Store scanner data to trigger preview screen rendering
     setScannerCaptureData(data);
     setShowScanner(false);
+  };
+
+  const handlePreviewSaveSuccess = (receipt) => {
+    console.log('✅ Receipt saved from preview:', receipt);
+    Toast.show({
+      type: 'success',
+      text1: '✅ Receipt Saved!',
+      text2: `${receipt.ocrData?.vendorName || 'Receipt'} saved successfully`,
+      position: 'top',
+      visibilityTime: 3000,
+    });
     
-    // Use the app-level navigation to show preview
-    if (onNavigateToPreview) {
-      // Wait for state update then navigate
-      setTimeout(() => {
-        onNavigateToPreview({
-          uri: data.uri,
-          ocrData: data.extractedFields,
-          ocrText: data.ocrText,
-          captureData: data,
-        });
-      }, 100);
-    }
+    // Clear scanner data and go back to main capture screen
+    setScannerCaptureData(null);
+    onBack();
+  };
+
+  const handlePreviewBack = () => {
+    console.log('⬅️ Going back from preview');
+    setScannerCaptureData(null);
   };
 
   // Show document scanner if requested
@@ -226,6 +234,19 @@ const CaptureScreen = ({ onBack, onNavigateToPreview }) => {
       <DocumentScannerScreen
         onCapture={handleScannerCapture}
         onBack={() => setShowScanner(false)}
+      />
+    );
+  }
+
+  // Show receipt preview if we have scanner capture data
+  if (scannerCaptureData) {
+    return (
+      <ReceiptPreviewScreen
+        imagePath={scannerCaptureData.uri}
+        ocrData={scannerCaptureData.extractedFields}
+        receiptId={null} // Will be created on save
+        onSaveSuccess={handlePreviewSaveSuccess}
+        onBack={handlePreviewBack}
       />
     );
   }

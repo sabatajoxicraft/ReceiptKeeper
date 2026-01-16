@@ -38,6 +38,7 @@ const ReceiptPreviewScreen = ({
   receiptId,
   onBack, 
   onSaved,
+  onSaveSuccess,
   onRetake
 }) => {
   // Form state
@@ -309,10 +310,11 @@ const ReceiptPreviewScreen = ({
         visibilityTime: 3000,
       });
 
-      // Callback on success
-      if (onSaved) {
+      // Callback on success - use onSaveSuccess first, then onSaved for legacy support
+      const successCallback = onSaveSuccess || onSaved;
+      if (successCallback) {
         setTimeout(() => {
-          onSaved({
+          successCallback({
             receiptId: finalReceiptId,
             ocrData: ocrDataToSave,
             date,
