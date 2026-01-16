@@ -34,12 +34,19 @@ const DocumentScannerScreen = ({ onCapture, onBack }) => {
   const device = useCameraDevice('back');
   const edgePulseAnim = useRef(new Animated.Value(1)).current;
   
-  // OCR Configuration for real-time text recognition
-  const { scanText } = useTextRecognition({
-    language: 'latin',
-    frameSkipThreshold: 10, // Process every 10th frame for performance
-    useLightweightMode: true, // Optimized for Android
-  });
+  // OCR Configuration - wrapped in try-catch for safety
+  let scanText = null;
+  try {
+    const ocr = useTextRecognition({
+      language: 'latin',
+      frameSkipThreshold: 10,
+      useLightweightMode: true,
+    });
+    scanText = ocr.scanText;
+  } catch (error) {
+    console.error('OCR initialization failed:', error);
+    // Will continue without OCR features
+  }
 
   useEffect(() => {
     checkCameraPermission();
@@ -53,18 +60,20 @@ const DocumentScannerScreen = ({ onCapture, onBack }) => {
     
     runAtTargetFps(2, () => {
       try {
-        const result = scanText(frame);
-        
-        if (result?.text && result.text.length > 10) {
-          runOnJS(setLiveOcrText)(result.text);
+        if (scanText) {
+          const result = scanText(frame);
           
-          // Calculate confidence based on text length and quality
-          const confidence = Math.min(0.8, result.text.length / 500);
-          runOnJS(setOcrConfidence)(confidence);
-          
-          // Show OCR overlay if we have meaningful text
-          if (result.text.length > 50) {
-            runOnJS(setShowOcrOverlay)(true);
+          if (result?.text && result.text.length > 10) {
+            runOnJS(setLiveOcrText)(result.text);
+            
+            // Calculate confidence based on text length and quality
+            const confidence = Math.min(0.8, result.text.length / 500);
+            runOnJS(setOcrConfidence)(confidence);
+            
+            // Show OCR overlay if we have meaningful text
+            if (result.text.length > 50) {
+              runOnJS(setShowOcrOverlay)(true);
+            }
           }
         }
       } catch (error) {
