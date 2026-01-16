@@ -58,6 +58,18 @@ const fixes = [
     file: 'node_modules/react-native-worklets-core/android/build.gradle',
     search: 'android {',
     replace: 'android {\n    namespace "com.worklets"'
+  },
+  // Fix for @shopify/react-native-skia - replace deprecated react-native:+ with react-android
+  {
+    file: 'node_modules/@shopify/react-native-skia/android/build.gradle',
+    search: "implementation 'com.facebook.react:react-native:+'",
+    replace: 'compileOnly "com.facebook.react:react-android:0.73.6"'
+  },
+  // Add maven central to skia repositories for react-android resolution
+  {
+    file: 'node_modules/@shopify/react-native-skia/android/build.gradle',
+    search: 'mavenCentral {\n        // We don\'t want to fetch react-native from Maven Central as there are\n        // older versions over there.\n        content {\n            excludeGroup "com.facebook.react"\n        }\n    }',
+    replace: 'mavenCentral()'
   }
 ];
 
