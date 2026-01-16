@@ -27,7 +27,7 @@ index 2bd3ed6..0d0aa04 100644
  class RNVisionCameraOCRPackage : ReactPackage {
      companion object {
 diff --git a/node_modules/react-native-vision-camera-ocr-plus/android/src/main/java/com/rnvisioncameraocr/RNVisionCameraOCRPlugin.kt b/node_modules/react-native-vision-camera-ocr-plus/android/src/main/java/com/rnvisioncameraocr/RNVisionCameraOCRPlugin.kt
-index 5ca4c32..00994f9 100644
+index 5ca4c32..a9e4a58 100644
 --- a/node_modules/react-native-vision-camera-ocr-plus/android/src/main/java/com/rnvisioncameraocr/RNVisionCameraOCRPlugin.kt
 +++ b/node_modules/react-native-vision-camera-ocr-plus/android/src/main/java/com/rnvisioncameraocr/RNVisionCameraOCRPlugin.kt
 @@ -15,9 +15,9 @@ import com.google.mlkit.vision.text.devanagari.DevanagariTextRecognizerOptions
@@ -43,8 +43,21 @@ index 5ca4c32..00994f9 100644
  import android.graphics.Bitmap
  
  class RNVisionCameraOCRPlugin(proxy: VisionCameraProxy, options: Map<String, Any>?) :
+@@ -86,10 +86,10 @@ class RNVisionCameraOCRPlugin(proxy: VisionCameraProxy, options: Map<String, Any
+                     null,
+                     false
+                 )
+-                image = InputImage.fromBitmap(bitmap,frame.imageProxy.imageInfo.rotationDegrees);
++                image = InputImage.fromBitmap(bitmap,frame.orientation.toDegrees());
+             } else {
+                 val mediaImage: Image = frame.image
+-                image = InputImage.fromMediaImage(mediaImage, frame.imageProxy.imageInfo.rotationDegrees)
++                image = InputImage.fromMediaImage(mediaImage, frame.orientation.toDegrees())
+             }
+             
+             // Use ML Kit recognition
 diff --git a/node_modules/react-native-vision-camera-ocr-plus/android/src/main/java/com/rnvisioncameraocr/VisionCameraTranslatorPlugin.kt b/node_modules/react-native-vision-camera-ocr-plus/android/src/main/java/com/rnvisioncameraocr/VisionCameraTranslatorPlugin.kt
-index 59491ac..4deaac9 100644
+index 59491ac..650ec8d 100644
 --- a/node_modules/react-native-vision-camera-ocr-plus/android/src/main/java/com/rnvisioncameraocr/VisionCameraTranslatorPlugin.kt
 +++ b/node_modules/react-native-vision-camera-ocr-plus/android/src/main/java/com/rnvisioncameraocr/VisionCameraTranslatorPlugin.kt
 @@ -14,9 +14,9 @@ import com.google.mlkit.vision.common.InputImage
@@ -60,3 +73,14 @@ index 59491ac..4deaac9 100644
  
  private const val TAG = "VisionCameraTranslator"
  
+@@ -54,8 +54,8 @@ class VisionCameraTranslatorPlugin(proxy: VisionCameraProxy, options: Map<String
+ 
+     override fun callback(frame: Frame, params: MutableMap<String, Any>?) : Any? {
+         val mediaImage: Image = frame.image
+-        println(" OKKK ${ frame.imageProxy.imageInfo.rotationDegrees }")
+-        val image = InputImage.fromMediaImage(mediaImage, frame.imageProxy.imageInfo.rotationDegrees)
++        println(" OKKK ${ frame.orientation.toDegrees() }")
++        val image = InputImage.fromMediaImage(mediaImage, frame.orientation.toDegrees())
+         val task: Task<Text> = recognizer.process(image)
+         try {
+             val resultText: String = Tasks.await(task).text
