@@ -55,29 +55,30 @@ const DocumentScannerScreen = ({ onCapture, onBack }) => {
   }, []);
 
   // Frame processor for real-time OCR (runs on camera frames)
+  // Only create if scanText is available and device is ready
   const frameProcessor = useFrameProcessor((frame) => {
     'worklet';
     
+    if (!scanText) return;
+    
     runAtTargetFps(2, () => {
       try {
-        if (scanText) {
-          const result = scanText(frame);
+        const result = scanText(frame);
+        
+        if (result?.text && result.text.length > 10) {
+          runOnJS(setLiveOcrText)(result.text);
           
-          if (result?.text && result.text.length > 10) {
-            runOnJS(setLiveOcrText)(result.text);
-            
-            // Calculate confidence based on text length and quality
-            const confidence = Math.min(0.8, result.text.length / 500);
-            runOnJS(setOcrConfidence)(confidence);
-            
-            // Show OCR overlay if we have meaningful text
-            if (result.text.length > 50) {
-              runOnJS(setShowOcrOverlay)(true);
-            }
+          // Calculate confidence based on text length and quality
+          const confidence = Math.min(0.8, result.text.length / 500);
+          runOnJS(setOcrConfidence)(confidence);
+          
+          // Show OCR overlay if we have meaningful text
+          if (result.text.length > 50) {
+            runOnJS(setShowOcrOverlay)(true);
           }
         }
       } catch (error) {
-        console.warn('Frame processor error:', error);
+        // Silently ignore frame processor errors to prevent crashes
       }
     });
   }, [scanText]);
@@ -86,10 +87,16 @@ const DocumentScannerScreen = ({ onCapture, onBack }) => {
     const status = await Camera.requestCameraPermission();
     setHasPermission(status === 'granted');
     if (status !== 'granted') {
-      Alert.alert(
-        'Camera Permission Required',
-        'Please enable camera access to scan documents'
-      );
+      // Don't show alert immediately, let the UI render the permission denied screen first
+      setTimeout(() => {
+        Alert.alert(
+          'Camera Permission Required',
+          'Please enable camera access in your device settings to scan documents',
+          [
+            { text: 'OK', onPress: () => onBack() }
+          ]
+        );
+      }, 300);
     }
   };
 
@@ -221,9 +228,9 @@ const DocumentScannerScreen = ({ onCapture, onBack }) => {
         ref={camera}
         style={StyleSheet.absoluteFill}
         device={device}
-        isActive={isActive}
+        isActive={isActive && hasPermission}
         photo={true}
-        frameProcessor={frameProcessor}
+        {...(scanText ? { frameProcessor: frameProcessor } : {})}
       />
 
       {/* Dark overlay */}
