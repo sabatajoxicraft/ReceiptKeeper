@@ -52,6 +52,12 @@ const fixes = [
     file: 'node_modules/react-native-document-picker/android/build.gradle',
     search: 'android {',
     replace: 'android {\n    buildFeatures {\n        buildConfig true\n    }'
+  },
+  // Fix for react-native-worklets-core namespace issue with Gradle 8.4
+  {
+    file: 'node_modules/react-native-worklets-core/android/build.gradle',
+    search: 'android {',
+    replace: 'android {\n    namespace "com.worklets"'
   }
 ];
 
