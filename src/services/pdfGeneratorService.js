@@ -1,5 +1,5 @@
 import RNFS from 'react-native-fs';
-import RNHTMLtoPDF from 'react-native-html-to-pdf';
+// import RNHTMLtoPDF from 'react-native-html-to-pdf'; // DISABLED: Gradle dependency issues, will fix in next iteration
 import { getReceipts } from '../database/database';
 
 /**
@@ -124,42 +124,9 @@ const generateHTML = (year, month, receipts) => {
  * Generate monthly receipt PDF
  */
 export const generateMonthlyReceiptPDF = async (year, month) => {
-  try {
-    console.log(`📄 Generating PDF for ${MONTH_NAMES[month - 1]} ${year}...`);
-    
-    await ensureDirectoryExists();
-
-    const allReceipts = await getReceipts(1000);
-    const monthReceipts = allReceipts.filter(receipt => {
-      const receiptDate = new Date(receipt.date_captured || receipt.extracted_at);
-      return receiptDate.getFullYear() === year && receiptDate.getMonth() === month - 1;
-    });
-
-    if (monthReceipts.length === 0) {
-      throw new Error(`No receipts found for ${MONTH_NAMES[month - 1]} ${year}`);
-    }
-
-    console.log(`✅ Found ${monthReceipts.length} receipts`);
-
-    const html = generateHTML(year, month, monthReceipts);
-    const filename = `${year}_${MONTH_NAMES[month - 1]}_Receipts`;
-
-    const options = {
-      html,
-      fileName: filename,
-      directory: PDF_OUTPUT_DIR,
-      base64: false,
-    };
-
-    const file = await RNHTMLtoPDF.convert(options);
-    console.log(`✅ PDF generated: ${file.filePath}`);
-
-    return file.filePath;
-
-  } catch (error) {
-    console.error('❌ Error generating PDF:', error);
-    throw new Error(`Failed to generate PDF: ${error.message}`);
-  }
+  // PDF generation temporarily disabled due to Gradle dependency issues
+  // Will be re-enabled in next iteration
+  throw new Error('PDF generation feature is temporarily disabled for this build. Please try again in the next update.');
 };
 
 export const listMonthlyPDFs = async () => {
