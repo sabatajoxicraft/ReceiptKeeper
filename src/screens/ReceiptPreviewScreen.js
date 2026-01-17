@@ -21,16 +21,13 @@ import { buildOneDrivePath } from '../services/onedriveService';
 import CardBadge from '../components/CardBadge';
 import Toast from 'react-native-toast-message';
 
-// Category options for dropdown
+// Category options for dropdown - SARS-compliant categories
 const RECEIPT_CATEGORIES = [
-  { label: 'Food & Dining', value: 'food' },
-  { label: 'Transportation', value: 'transportation' },
-  { label: 'Office Supplies', value: 'office' },
-  { label: 'Utilities', value: 'utilities' },
-  { label: 'Healthcare', value: 'healthcare' },
-  { label: 'Entertainment', value: 'entertainment' },
-  { label: 'Travel', value: 'travel' },
-  { label: 'Other', value: 'other' },
+  { label: 'Transport', value: 'Transport' },
+  { label: 'Meals', value: 'Meals' },
+  { label: 'Supplies', value: 'Supplies' },
+  { label: 'Services', value: 'Services' },
+  { label: 'Other', value: 'Other' },
 ];
 
 const ReceiptPreviewScreen = ({ 
@@ -50,7 +47,7 @@ const ReceiptPreviewScreen = ({
   const [totalAmount, setTotalAmount] = useState('');
   const [taxAmount, setTaxAmount] = useState('');
   const [invoiceNumber, setInvoiceNumber] = useState('');
-  const [category, setCategory] = useState('other');
+  const [category, setCategory] = useState('Other');
   const [selectedCard, setSelectedCard] = useState(null);
   const [cards, setCards] = useState(DEFAULT_CARDS);
   const [showCategoryPicker, setShowCategoryPicker] = useState(false);

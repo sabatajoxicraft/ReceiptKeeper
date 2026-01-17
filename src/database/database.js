@@ -73,12 +73,48 @@ export const saveReceipt = async (receiptData) => {
   return result[0].insertId;
 };
 
-export const getReceipts = async (limit = 50) => {
+export const getReceipts = async (limit = 50, filters = {}) => {
   const db = getDatabase();
-  const results = await db.executeSql(
-    'SELECT * FROM receipts ORDER BY date_captured DESC LIMIT ?',
-    [limit]
-  );
+  
+  let query = 'SELECT * FROM receipts WHERE 1=1';
+  const params = [];
+
+  // Apply filters
+  if (filters.searchQuery) {
+    query += ' AND (vendor_name LIKE ? OR invoice_number LIKE ? OR filename LIKE ?)';
+    const searchPattern = `%${filters.searchQuery}%`;
+    params.push(searchPattern, searchPattern, searchPattern);
+  }
+
+  if (filters.category && filters.category !== 'All') {
+    query += ' AND category = ?';
+    params.push(filters.category);
+  }
+
+  if (filters.minAmount) {
+    query += ' AND total_amount >= ?';
+    params.push(parseFloat(filters.minAmount));
+  }
+
+  if (filters.maxAmount) {
+    query += ' AND total_amount <= ?';
+    params.push(parseFloat(filters.maxAmount));
+  }
+
+  if (filters.startDate) {
+    query += ' AND date_captured >= ?';
+    params.push(filters.startDate);
+  }
+
+  if (filters.endDate) {
+    query += ' AND date_captured <= ?';
+    params.push(filters.endDate);
+  }
+
+  query += ' ORDER BY date_captured DESC LIMIT ?';
+  params.push(limit);
+
+  const results = await db.executeSql(query, params);
 
   const receipts = [];
   for (let i = 0; i < results[0].rows.length; i++) {

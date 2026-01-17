@@ -8,16 +8,24 @@ import {
   Alert,
   RefreshControl,
   ActivityIndicator,
+  Image,
 } from 'react-native';
 import { getReceipts } from '../database/database';
 import { scanForMissingReceipts } from '../services/storageService';
 import { APP_COLORS } from '../config/constants';
 import SyncStatusBar from '../components/SyncStatusBar';
+import SearchFilterBar from '../components/SearchFilterBar';
+import PDFExportModal from '../components/PDFExportModal';
+import ReceiptDetailScreen from './ReceiptDetailScreen';
 
 const MainScreen = ({ onCapture, onSettings, onViewLogs }) => {
   const [sections, setSections] = useState([]);
   const [refreshing, setRefreshing] = useState(false);
   const [stats, setStats] = useState({ total: 0, thisMonth: 0 });
+  const [selectedReceiptId, setSelectedReceiptId] = useState(null);
+  const [currentFilters, setCurrentFilters] = useState({});
+  const [showPDFModal, setShowPDFModal] = useState(false);
+  const [allReceipts, setAllReceipts] = useState([]);
 
   useEffect(() => {
     // Initial load and scan
@@ -35,7 +43,8 @@ const MainScreen = ({ onCapture, onSettings, onViewLogs }) => {
 
   const loadReceipts = async () => {
     try {
-      const data = await getReceipts(1000); // Increased limit to see history
+      const data = await getReceipts(1000, currentFilters); // Apply filters
+      setAllReceipts(data); // Store all receipts for PDF export
       
       // Group by status
       const pending = data.filter(r => r.upload_status !== 'success');
@@ -76,6 +85,14 @@ const MainScreen = ({ onCapture, onSettings, onViewLogs }) => {
     }
   };
 
+  const handleFilterChange = (filters) => {
+    setCurrentFilters(filters);
+  };
+
+  useEffect(() => {
+    loadReceipts();
+  }, [currentFilters]);
+
   const onRefresh = async () => {
     setRefreshing(true);
     await scanForMissingReceipts(); // Check storage again on refresh
@@ -83,28 +100,81 @@ const MainScreen = ({ onCapture, onSettings, onViewLogs }) => {
     setRefreshing(false);
   };
 
+  const handleReceiptPress = (receiptId) => {
+    setSelectedReceiptId(receiptId);
+  };
+
+  const handleBackToList = () => {
+    setSelectedReceiptId(null);
+    loadReceipts(); // Refresh list after potential edits
+  };
+
   const renderReceipt = ({ item }) => (
-    <View style={styles.receiptCard}>
-      <View style={styles.receiptHeader}>
-        <Text style={styles.receiptFilename}>{item.filename}</Text>
-        <Text style={styles.receiptDate}>
-          {new Date(item.date_captured).toLocaleDateString()}
-        </Text>
+    <TouchableOpacity
+      style={styles.receiptCard}
+      onPress={() => handleReceiptPress(item.id)}
+      activeOpacity={0.7}
+    >
+      <View style={styles.receiptCardContent}>
+        {/* Thumbnail */}
+        {item.file_path && (
+          <Image
+            source={{ uri: `file://${item.file_path}` }}
+            style={styles.thumbnail}
+            resizeMode="cover"
+          />
+        )}
+
+        {/* Receipt Info */}
+        <View style={styles.receiptInfo}>
+          <View style={styles.receiptHeader}>
+            <Text style={styles.receiptVendor} numberOfLines={1}>
+              {item.vendor_name || item.filename}
+            </Text>
+            <Text style={styles.receiptDate}>
+              {new Date(item.date_captured).toLocaleDateString()}
+            </Text>
+          </View>
+
+          {item.total_amount && (
+            <Text style={styles.receiptAmount}>
+              R {parseFloat(item.total_amount).toFixed(2)}
+            </Text>
+          )}
+
+          {item.category && (
+            <View style={styles.categoryBadgeSmall}>
+              <Text style={styles.categoryBadgeTextSmall}>{item.category}</Text>
+            </View>
+          )}
+
+          <View style={styles.receiptDetails}>
+            <Text style={styles.receiptPayment}>
+              {item.payment_method === 'cash' ? '💵 Cash' : `💳 ${item.card_name}`}
+            </Text>
+          </View>
+
+          {item.upload_status === 'pending' && (
+            <Text style={styles.uploadPending}>⏳ Upload pending</Text>
+          )}
+          {item.upload_status === 'success' && (
+            <Text style={styles.uploadSuccess}>✅ Synced</Text>
+          )}
+        </View>
       </View>
-      <View style={styles.receiptDetails}>
-        <Text style={styles.receiptPayment}>
-          {item.payment_method === 'cash' ? '💵 Cash' : `💳 ${item.card_name}`}
-        </Text>
-        <Text style={styles.receiptPath}>{item.onedrive_path}</Text>
-      </View>
-      {item.upload_status === 'pending' && (
-        <Text style={styles.uploadPending}>⏳ Upload pending</Text>
-      )}
-      {item.upload_status === 'success' && (
-        <Text style={styles.uploadSuccess}>✅ Synced</Text>
-      )}
-    </View>
+    </TouchableOpacity>
   );
+
+  // Show detail screen if receipt selected
+  if (selectedReceiptId) {
+    return (
+      <ReceiptDetailScreen
+        receiptId={selectedReceiptId}
+        onBack={handleBackToList}
+        onUpdate={loadReceipts}
+      />
+    );
+  }
 
   return (
     <View style={styles.container}>
@@ -134,9 +204,22 @@ const MainScreen = ({ onCapture, onSettings, onViewLogs }) => {
       {/* Sync Status Bar */}
       <SyncStatusBar />
 
+      {/* Search and Filter */}
+      <SearchFilterBar onFilterChange={handleFilterChange} />
+
       <TouchableOpacity style={styles.captureButton} onPress={onCapture}>
         <Text style={styles.captureButtonText}>📸 Capture Receipt</Text>
       </TouchableOpacity>
+
+      {/* PDF Export Button */}
+      {allReceipts.length > 0 && (
+        <TouchableOpacity
+          style={styles.pdfButton}
+          onPress={() => setShowPDFModal(true)}
+        >
+          <Text style={styles.pdfButtonText}>📄 Export to PDF</Text>
+        </TouchableOpacity>
+      )}
 
       <View style={styles.listContainer}>
         {sections.length === 0 ? (
@@ -161,6 +244,13 @@ const MainScreen = ({ onCapture, onSettings, onViewLogs }) => {
           />
         )}
       </View>
+
+      {/* PDF Export Modal */}
+      <PDFExportModal
+        visible={showPDFModal}
+        onClose={() => setShowPDFModal(false)}
+        receipts={allReceipts}
+      />
     </View>
   );
 };
@@ -217,7 +307,8 @@ const styles = StyleSheet.create({
   },
   captureButton: {
     backgroundColor: APP_COLORS.primary,
-    margin: 20,
+    marginHorizontal: 20,
+    marginTop: 10,
     padding: 20,
     borderRadius: 15,
     alignItems: 'center',
@@ -230,6 +321,25 @@ const styles = StyleSheet.create({
   captureButtonText: {
     color: '#FFFFFF',
     fontSize: 22,
+    fontWeight: '600',
+  },
+  pdfButton: {
+    backgroundColor: '#FF6B35',
+    marginHorizontal: 20,
+    marginTop: 10,
+    marginBottom: 10,
+    padding: 18,
+    borderRadius: 15,
+    alignItems: 'center',
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.2,
+    shadowRadius: 3,
+    elevation: 5,
+  },
+  pdfButtonText: {
+    color: '#FFFFFF',
+    fontSize: 18,
     fontWeight: '600',
   },
   listContainer: {
@@ -253,37 +363,71 @@ const styles = StyleSheet.create({
   },
   receiptCard: {
     backgroundColor: APP_COLORS.surface,
-    padding: 15,
     borderRadius: 10,
-    marginBottom: 10,
+    marginBottom: 12,
+    overflow: 'hidden',
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.1,
+    shadowRadius: 4,
+    elevation: 3,
+  },
+  receiptCardContent: {
+    flexDirection: 'row',
+    padding: 12,
+  },
+  thumbnail: {
+    width: 80,
+    height: 100,
+    borderRadius: 8,
+    backgroundColor: APP_COLORS.border,
+    marginRight: 12,
+  },
+  receiptInfo: {
+    flex: 1,
+    justifyContent: 'space-between',
   },
   receiptHeader: {
     flexDirection: 'row',
     justifyContent: 'space-between',
-    marginBottom: 8,
+    marginBottom: 5,
   },
-  receiptFilename: {
+  receiptVendor: {
     fontSize: 16,
     fontWeight: '600',
     color: APP_COLORS.text,
     flex: 1,
+    marginRight: 10,
   },
   receiptDate: {
-    fontSize: 14,
-    color: APP_COLORS.textSecondary,
-  },
-  receiptDetails: {
-    marginTop: 5,
-  },
-  receiptPayment: {
-    fontSize: 15,
-    color: APP_COLORS.text,
-    marginBottom: 3,
-  },
-  receiptPath: {
     fontSize: 12,
     color: APP_COLORS.textSecondary,
-    fontFamily: 'monospace',
+  },
+  receiptAmount: {
+    fontSize: 18,
+    fontWeight: 'bold',
+    color: APP_COLORS.primary,
+    marginBottom: 5,
+  },
+  categoryBadgeSmall: {
+    backgroundColor: APP_COLORS.primary,
+    paddingHorizontal: 10,
+    paddingVertical: 4,
+    borderRadius: 12,
+    alignSelf: 'flex-start',
+    marginBottom: 5,
+  },
+  categoryBadgeTextSmall: {
+    fontSize: 11,
+    color: '#fff',
+    fontWeight: '600',
+  },
+  receiptDetails: {
+    marginTop: 3,
+  },
+  receiptPayment: {
+    fontSize: 13,
+    color: APP_COLORS.textSecondary,
   },
   uploadPending: {
     fontSize: 12,
