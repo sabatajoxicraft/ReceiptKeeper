@@ -10,6 +10,8 @@ import {
   ActivityIndicator,
   TextInput as RNTextInput,
   Platform,
+  Modal,
+  Dimensions,
 } from 'react-native';
 import RNFS from 'react-native-fs';
 import { APP_COLORS, DEFAULT_CARDS, PAYMENT_METHODS } from '../config/constants';
@@ -58,6 +60,9 @@ const ReceiptPreviewScreen = ({
   const [rawOcrText, setRawOcrText] = useState('');
   const [overallConfidence, setOverallConfidence] = useState(0);
   const [imageUri, setImageUri] = useState('');
+
+  // Image viewer state
+  const [showImageViewer, setShowImageViewer] = useState(false);
 
   // Processing state
   const [saving, setSaving] = useState(false);
@@ -368,8 +373,24 @@ const ReceiptPreviewScreen = ({
       {/* Receipt Image Preview */}
       {imageUri && (
         <View style={styles.imageSection}>
-          <Text style={styles.sectionTitle}>Receipt Image</Text>
-          <Image source={{ uri: imageUri }} style={styles.thumbnail} />
+          <View style={styles.imageSectionHeader}>
+            <Text style={styles.sectionTitle}>Receipt Image</Text>
+            <TouchableOpacity 
+              style={styles.viewFullButton}
+              onPress={() => setShowImageViewer(true)}>
+              <Text style={styles.viewFullButtonText}>🔍 View Full Size</Text>
+            </TouchableOpacity>
+          </View>
+          <TouchableOpacity 
+            activeOpacity={0.8}
+            onPress={() => setShowImageViewer(true)}>
+            <Image 
+              source={{ uri: imageUri }} 
+              style={styles.thumbnailLarge} 
+              resizeMode="contain"
+            />
+          </TouchableOpacity>
+          <Text style={styles.imageHint}>Tap image to view full size</Text>
         </View>
       )}
 
@@ -687,6 +708,40 @@ const ReceiptPreviewScreen = ({
 
       {/* Bottom Spacing */}
       <View style={styles.bottomSpacing} />
+
+      {/* Full Screen Image Viewer Modal */}
+      <Modal
+        visible={showImageViewer}
+        transparent={true}
+        animationType="fade"
+        onRequestClose={() => setShowImageViewer(false)}>
+        <View style={styles.imageViewerContainer}>
+          <View style={styles.imageViewerHeader}>
+            <Text style={styles.imageViewerTitle}>Receipt Image</Text>
+            <TouchableOpacity 
+              style={styles.imageViewerClose}
+              onPress={() => setShowImageViewer(false)}>
+              <Text style={styles.imageViewerCloseText}>✕ Close</Text>
+            </TouchableOpacity>
+          </View>
+          <ScrollView
+            style={styles.imageViewerScroll}
+            contentContainerStyle={styles.imageViewerScrollContent}
+            minimumZoomScale={1}
+            maximumZoomScale={5}
+            showsVerticalScrollIndicator={true}
+            showsHorizontalScrollIndicator={true}>
+            <Image 
+              source={{ uri: imageUri }} 
+              style={styles.fullScreenImage}
+              resizeMode="contain"
+            />
+          </ScrollView>
+          <Text style={styles.imageViewerHint}>
+            📌 Scroll to view entire receipt
+          </Text>
+        </View>
+      </Modal>
     </ScrollView>
   );
 };
@@ -716,11 +771,27 @@ const styles = StyleSheet.create({
     padding: 15,
     marginTop: 10,
   },
+  imageSectionHeader: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+    marginBottom: 12,
+  },
   sectionTitle: {
     fontSize: 16,
     fontWeight: '600',
     color: APP_COLORS.text,
-    marginBottom: 12,
+  },
+  viewFullButton: {
+    backgroundColor: APP_COLORS.primary,
+    paddingHorizontal: 12,
+    paddingVertical: 6,
+    borderRadius: 6,
+  },
+  viewFullButtonText: {
+    color: '#FFF',
+    fontSize: 12,
+    fontWeight: '600',
   },
   thumbnail: {
     width: '100%',
@@ -728,6 +799,68 @@ const styles = StyleSheet.create({
     borderRadius: 10,
     backgroundColor: '#000',
     resizeMode: 'contain',
+  },
+  thumbnailLarge: {
+    width: '100%',
+    height: 400,
+    borderRadius: 10,
+    backgroundColor: '#000',
+    borderWidth: 2,
+    borderColor: APP_COLORS.border,
+  },
+  imageHint: {
+    fontSize: 12,
+    color: APP_COLORS.textSecondary,
+    textAlign: 'center',
+    marginTop: 8,
+    fontStyle: 'italic',
+  },
+
+  // Full Screen Image Viewer
+  imageViewerContainer: {
+    flex: 1,
+    backgroundColor: 'rgba(0, 0, 0, 0.95)',
+  },
+  imageViewerHeader: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+    padding: 20,
+    backgroundColor: 'rgba(0, 0, 0, 0.8)',
+  },
+  imageViewerTitle: {
+    fontSize: 18,
+    fontWeight: '600',
+    color: '#FFF',
+  },
+  imageViewerClose: {
+    backgroundColor: APP_COLORS.primary,
+    paddingHorizontal: 16,
+    paddingVertical: 8,
+    borderRadius: 8,
+  },
+  imageViewerCloseText: {
+    color: '#FFF',
+    fontSize: 14,
+    fontWeight: '600',
+  },
+  imageViewerScroll: {
+    flex: 1,
+  },
+  imageViewerScrollContent: {
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  fullScreenImage: {
+    width: Dimensions.get('window').width,
+    height: Dimensions.get('window').height * 0.8,
+  },
+  imageViewerHint: {
+    color: '#FFF',
+    fontSize: 14,
+    textAlign: 'center',
+    padding: 16,
+    backgroundColor: 'rgba(0, 0, 0, 0.8)',
   },
 
   // Confidence Summary
